@@ -18,7 +18,7 @@ Output: "information"
 Input: "Bạn chuyên bán các loại sản phẩm nào"
 Output: "information"
 
-Input: "bạn có bán đè led không"
+Input: "bạn có bán đèn led không"
 Output: "product"
 
 Input: "vì sao wifi khói không hoạt động"

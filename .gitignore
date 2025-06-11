@@ -1,3 +1,4 @@
-test.ipynb
 .sellbotenv
 .env
+.DS_Store
+output.txt

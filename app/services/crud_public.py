@@ -1,13 +1,297 @@
+from json import JSONDecodeError
 from sqlalchemy.orm import Session
-from models.normal_models import ProductDescription
-from models.normal_models import Pricing
-from models.normal_models import Inventory
-from typing import Optional
-
+from app.core.state import SellState
+from app.models.normal_models import (
+    ProductDescription, Pricing, Inventory, Cart,
+    Order, OrderItem, Customer
+)
+from datetime import datetime
+from typing import Optional, List
+from sqlalchemy import text
 
 class PublicCRUD:
     def __init__(self, db: Session):
         self.db = db
+        
+    # ------------------ OTHER QUERY ------------------ #
+    
+    def get_order_summary_by_id(self, order_id: int) -> Optional[dict]:
+        result = (
+            self.db.query(
+                Customer.name.label("customer_name"),
+                Customer.phone_number.label("customer_phone"),
+                Customer.address.label("customer_address"),
+
+                Order.payment,
+                Order.order_total,
+                Order.shipping_fee,
+                Order.grand_total
+            )
+            .join(Customer, Order.customer_id == Customer.customer_id)
+            .filter(Order.order_id == order_id)
+            .first()
+        )
+
+        return dict(result._mapping) if result else None
+    
+    def get_order_items_with_details(self, order_id: int) -> List[dict]:
+        results = (
+            self.db.query(
+                OrderItem.order_id,
+                OrderItem.product_id,
+                ProductDescription.product_name,
+                Pricing.variance_description.label("variance_name"),
+                OrderItem.sku,
+                OrderItem.quantity,
+                OrderItem.price,
+                OrderItem.subtotal,
+            )
+            .join(ProductDescription, OrderItem.product_id == ProductDescription.product_id)
+            .join(Pricing, OrderItem.sku == Pricing.sku)
+            .filter(OrderItem.order_id == order_id)
+            .all()
+        )
+    
+        return [dict(row._mapping) for row in results]
+    
+    def execute_command(self, command: str) -> List[dict]:
+        sql = text(command)
+        results = self.db.execute(sql).fetchall()
+        
+        return [dict(row._mapping) for row in results]
+    
+    def search_products_by_keyword(self, keyword: str) -> List[dict]:
+        results = (
+            self.db.query(
+                ProductDescription.product_id,
+                Pricing.sku,
+                ProductDescription.product_name,
+                Pricing.variance_description,
+                ProductDescription.brief_description,
+                Pricing.price,
+                Inventory.inventory_quantity
+            )
+            .join(Pricing, ProductDescription.product_id == Pricing.product_id)
+            .join(Inventory, Pricing.sku == Inventory.sku)
+            .filter(
+                ProductDescription.product_name.ilike(f"%{keyword}%"),
+                Inventory.inventory_quantity != 0,
+                Pricing.price != 0
+            )
+            .all()
+        )
+
+        return [dict(row._mapping) for row in results]  # chuyển kết quả thành list of dict
+    
+    def get_product_by_product_id_and_sku(self, product_id: int, sku: str) -> dict:
+        results = (
+            self.db.query(
+                ProductDescription.product_name,
+                Pricing.price
+            )
+            .join(Pricing, ProductDescription.product_id == Pricing.product_id)
+            .join(Inventory, Pricing.sku == Inventory.sku)
+            .filter(
+                ProductDescription.product_id == product_id,
+                Pricing.sku == sku
+            )
+            .first()
+        )
+        
+        return dict(results._mapping) # chuyển kết quả thành list of dict
+    
+    # ------------------ CUSTOMER ------------------ #
+    
+    def create_customer(self, name: Optional[str] = None,
+                        phone_number: Optional[str] = None, 
+                        address: Optional[str] = None) -> Customer:
+        customer = Customer(
+            name=name,
+            phone_number=phone_number,
+            address=address,
+            created_at=datetime.now()
+        )
+        self.db.add(customer)
+        self.db.commit()
+        self.db.refresh(customer)
+        return customer
+
+    def get_customer_by_id(self, customer_id: int) -> Optional[Customer]:
+        return self.db.query(Customer).filter(Customer.customer_id == customer_id).first()
+    
+    def get_customer_by_phone_number(self, phone_number: str) -> Optional[Customer]:
+        return self.db.query(Customer).filter(Customer.phone_number == phone_number).first()
+    
+    def get_customer_by_chat_id(self, chat_id: str) -> Optional[Customer]:
+        return self.db.query(Customer).filter(Customer.chat_id == chat_id).first()
+
+    def get_all_customers(self) -> List[Customer]:
+        return self.db.query(Customer).all()
+
+    def update_customer_info(self, customer_id: int,
+                             name: Optional[str] = None,
+                             phone_number: Optional[str] = None,
+                             address: Optional[str] = None) -> Optional[Customer]:
+        customer = self.get_customer_by_id(customer_id)
+        if customer:
+            if name is not None:
+                customer.name = name
+            if phone_number is not None:
+                customer.phone_number = phone_number
+            if address is not None:
+                customer.address = address
+            self.db.commit()
+            self.db.refresh(customer)
+            return customer
+        return None
+    
+    def update_customer_state_by_chat_id(db: Session, chat_id: str, new_state: dict) -> Optional[Customer]:
+        customer = db.query(Customer).filter(Customer.chat_id == chat_id).one()
+        customer.state = new_state
+        db.commit()
+        db.refresh(customer)
+        return customer
+
+    def delete_customer(self, customer_id: int) -> bool:
+        customer = self.get_customer_by_id(customer_id)
+        if customer:
+            self.db.delete(customer)
+            self.db.commit()
+            return True
+        return False
+    
+    # ------------------ ORDER ------------------ #
+    
+    def create_order(self,
+                 customer_id: Optional[int] = None,
+                 status: Optional[str] = 'pending',
+                 order_total: Optional[int] = 0,
+                 shipping_fee: Optional[int] = 0,
+                 grand_total: Optional[int] = None,
+                 payment: Optional[str] = 'COD'
+    ) -> Order:
+    
+        if grand_total is None:
+            grand_total = order_total + shipping_fee
+
+        order = Order(
+            customer_id=customer_id,
+            status=status,
+            order_total=order_total,
+            shipping_fee=shipping_fee,
+            grand_total=grand_total,
+            payment=payment,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+
+        self.db.add(order)
+        self.db.commit()
+        self.db.refresh(order)
+        return order
+
+    def get_order_by_id(self, order_id: int) -> Optional[Order]:
+        return self.db.query(Order).filter(Order.order_id == order_id).first()
+
+    def get_all_orders(self) -> List[Order]:
+        return self.db.query(Order).all()
+
+    def update_order_status(self, order_id: int, new_status: str) -> Optional[Order]:
+        order = self.get_order_by_id(order_id)
+        if order:
+            order.status = new_status
+            order.updated_at = datetime.now()
+            self.db.commit()
+            self.db.refresh(order)
+            return order
+        return None
+    
+    def update_order(self, 
+                     order_id: int, 
+                     payment: Optional[str] = None,
+                     order_total: Optional[int] = None,
+                     shipping_fee: Optional[int] = None,
+                     grand_total: Optional[int] = None
+    ) -> Optional[Order]:
+        order = self.get_order_by_id(order_id)
+        if not order:
+            return None
+
+        if payment is not None:
+            order.payment = payment
+        if order_total is not None:
+            order.order_total = order_total
+        if shipping_fee is not None:
+            order.shipping_fee = shipping_fee
+        if grand_total is not None:
+            order.grand_total = grand_total
+            
+        order.updated_at = datetime.now()
+        order.status = "confirmed"
+
+        order.updated_at = datetime.now()
+        self.db.commit()
+        self.db.refresh(order)
+        return order
+
+    def delete_order(self, order_id: int) -> bool:
+        order = self.get_order_by_id(order_id)
+        if order:
+            self.db.delete(order)
+            self.db.commit()
+            return True
+        return False
+    
+    # ------------------ ORDERITEM ------------------ #
+    
+    def create_order_item(self, order_id: int, product_id: int, sku: str,
+                          quantity: Optional[int] = None,
+                          price: Optional[int] = None,
+                          subtotal: Optional[int] = None) -> OrderItem:
+        order_item = OrderItem(
+            order_id=order_id,
+            product_id=product_id,
+            sku=sku,
+            quantity=quantity,
+            price=price,
+            subtotal=subtotal
+        )
+        self.db.add(order_item)
+        self.db.commit()
+        self.db.refresh(order_item)
+        return order_item
+    
+    def create_order_items_bulk(self, order_items: List[OrderItem]) -> Optional[List[OrderItem]]:
+        self.db.add_all(order_items)
+        self.db.commit()
+        for item in order_items:
+            self.db.refresh(item)
+        return order_items
+
+
+    def get_order_item_by_id(self, item_id: int) -> Optional[OrderItem]:
+        return self.db.query(OrderItem).filter(OrderItem.id == item_id).first()
+
+    def get_items_by_order_id(self, order_id: int) -> List[OrderItem]:
+        return self.db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+
+    def update_order_item_quantity(self, item_id: int, new_quantity: int) -> Optional[OrderItem]:
+        item = self.get_order_item_by_id(item_id)
+        if item:
+            item.quantity = new_quantity
+            item.subtotal = (item.price or 0) * new_quantity
+            self.db.commit()
+            self.db.refresh(item)
+            return item
+        return None
+
+    def delete_order_item(self, item_id: int) -> bool:
+        item = self.get_order_item_by_id(item_id)
+        if item:
+            self.db.delete(item)
+            self.db.commit()
+            return True
+        return False
 
     # ------------------ PRODUCT DESCRIPTION ------------------ #
 
@@ -117,6 +401,64 @@ class PublicCRUD:
         inventory = self.get_inventory_by_sku(sku)
         if inventory:
             self.db.delete(inventory)
+            self.db.commit()
+            return True
+        return False
+    
+    # ------------------ CART ------------------ #
+    
+    def create_cart(self,
+                    chat_id: Optional[str] = None,
+                    customer_name: Optional[str] = None,
+                    customer_phone: Optional[str] = None,
+                    address: Optional[str] = None,
+                    list_cart: Optional[dict] = None) -> Cart:
+        cart = Cart(
+            chat_id=chat_id,
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            address=address,
+            list_cart=list_cart
+        )
+        self.db.add(cart)
+        self.db.commit()
+        self.db.refresh(cart)
+        return cart
+
+    def get_cart_by_id(self, cart_id: int) -> Optional[Cart]:
+        return self.db.query(Cart).filter(Cart.id == cart_id).first()
+
+    def get_cart_by_chat_id(self, chat_id: str) -> List[Cart]:
+        return self.db.query(Cart).filter(Cart.chat_id == chat_id).all()
+
+    def get_all_carts(self) -> List[Cart]:
+        return self.db.query(Cart).all()
+
+    def update_cart(self,
+                    cart_id: int,
+                    customer_name: Optional[str] = None,
+                    customer_phone: Optional[str] = None,
+                    address: Optional[str] = None,
+                    list_cart: Optional[dict] = None) -> Optional[Cart]:
+        cart = self.get_cart_by_id(cart_id)
+        if cart:
+            if customer_name is not None:
+                cart.customer_name = customer_name
+            if customer_phone is not None:
+                cart.customer_phone = customer_phone
+            if address is not None:
+                cart.address = address
+            if list_cart is not None:
+                cart.list_cart = list_cart
+            self.db.commit()
+            self.db.refresh(cart)
+            return cart
+        return None
+
+    def delete_cart(self, cart_id: int) -> bool:
+        cart = self.get_cart_by_id(cart_id)
+        if cart:
+            self.db.delete(cart)
             self.db.commit()
             return True
         return False
