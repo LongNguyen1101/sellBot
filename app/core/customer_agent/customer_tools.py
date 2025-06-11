@@ -29,7 +29,7 @@ def find_customer(
         
         customer = graph_function.find_customer_by_phone_number(phone_number)
         if customer is not None:
-            content = "Customer found"
+            content = "Customer found."
             
             update["customer_id"] = customer.customer_id
             update["name"] = customer.name
@@ -44,8 +44,8 @@ def find_customer(
                 )
                 update["next_node"] = "__end__"
             else:
-                content = "\nContinue adding product to cart"
-                update["next_node"] = "cart_agent"
+                content += "\nAsk customer whether customer want to add product to cart."
+                update["next_node"] = "__end__"
             
         else:
             content = "Customer not found. Ask customer name and address to create order"

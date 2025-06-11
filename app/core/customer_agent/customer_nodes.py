@@ -48,7 +48,6 @@ class CustomerNodes:
         next_node = response["next_node"]
         update["messages"] = [AIMessage(content=content, name="customer_agent")]
         
-        
         return Command(
             update=update,
             goto=next_node

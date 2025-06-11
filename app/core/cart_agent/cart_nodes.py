@@ -1,3 +1,4 @@
+import json
 from turtle import update
 from langgraph.types import interrupt, Command
 from app.core import state
@@ -23,12 +24,12 @@ class CarttNodes:
         self.llm = init_model()
         self.create_cart_agent = create_react_agent(
             model=self.llm,
-            tools=[add_cart, get_cart],
+            tools=[add_cart],
             prompt = cart_agent_system_prompt(),
             state_schema=SellState
         )
         
-    def cart_agent(self, state: SellState) -> Command[Literal["customer_agent"]]:
+    def cart_agent(self, state: SellState) -> Command[Literal["customer_agent", "__end__", "cart_agent"]]:
         result = self.create_cart_agent.invoke(state)
         
         update = {
@@ -36,10 +37,12 @@ class CarttNodes:
                 AIMessage(content=result["messages"][-1].content, name="cart_agent")
             ],
         }
+        
         next_node = result["next_node"]
         
-        if result.get("cart", None) is not None:
-            update["cart"] = result["cart"]
+        if result.get("return_json", None):
+            data = json.loads(result["return_json"])
+            update["cart"] = data
         
         return Command(
             update=update,

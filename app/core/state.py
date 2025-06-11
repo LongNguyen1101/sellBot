@@ -1,5 +1,5 @@
 # BOOKINGTABLE/bot/langgraph/state.py
-from typing import TypedDict, Optional, Dict, Any, List, Annotated
+from typing import NoReturn, TypedDict, Optional, Dict, Any, List, Annotated
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt.chat_agent_executor import AgentState
 import operator
@@ -15,8 +15,6 @@ class SellState(AgentState):
     messages: Annotated[list, add_messages]
     next_node: Annotated[str, remain_value]
     
-    check_customer_info: Optional[str]
-    
     customer_id: Annotated[Optional[int], remain_value]
     name: Annotated[Optional[str], remain_value]
     phone_number: Annotated[Optional[str], remain_value]
@@ -26,15 +24,15 @@ class SellState(AgentState):
     cart: Annotated[List[dict], merge_lists]
     seen_products: Annotated[List[dict], merge_lists]
     product_chosen: Annotated[Optional[dict], remain_value]
+    
+    return_json: Optional[str]
 
 def init_state() -> SellState:
     return SellState(
         user_input="",
         messages=[],
         next_node="",
-        
-        check_customer_info=None,
-        
+    
         customer_id=None,
         name=None,
         phone_number=None,
@@ -43,5 +41,7 @@ def init_state() -> SellState:
 
         cart=[],
         seen_products=[],
-        product_chosen=None
+        product_chosen=None,
+        
+        return_json=None
     )

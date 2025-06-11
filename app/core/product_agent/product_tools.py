@@ -1,4 +1,5 @@
 from itertools import product
+import json
 from langchain_core.tools import tool, InjectedToolCallId
 from app.core.graph_function import GraphFunction
 from app.chain.sell_chain import SellChain
@@ -51,10 +52,21 @@ def get_products(
             f"{products}"
         )
         
+        phone_number = state["phone_number"]
+        if phone_number is None:
+            content += "Khách chưa có số điện thoại hỏi khách."
+        else:
+            content += "Khách có số điện thoại, không cần hỏi lại khách."
+        
+        return_json = {
+            "seen_products": extract_products,
+            "product_chosen": product_chosen,
+        }
+        return_json = json.dumps(return_json)
+        
         return Command(
             update={
-                "seen_products": extract_products,
-                "product_chosen": product_chosen,
+                "return_json": return_json,
                 "messages": [
                     ToolMessage
                     (

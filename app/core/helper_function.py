@@ -64,4 +64,27 @@ def _return_order(order_id: int) -> str:
         return content
         
     except Exception as e:
-        raise 
+        raise
+    
+def _get_cart(cart) -> str:
+    cart_item = ""
+    index = 1
+    total = 0
+    
+    for item in cart:
+        cart_item += (
+            f"STT: {index}\n"
+            f"Tên sản phẩm: {item["product_name"]}\n"
+            f"Tên phân loại: {item["variance_description"]}\n"
+            f"Mã sản phẩm: {item["product_id"]}\n"
+            f"Mã phân loại: {item["sku"]}\n"
+            f"Giá: {item["price"]} VNĐ\n"
+            f"Số lượng: {item["quantity"]} cái\n"
+            f"Tổng giá sản phẩm: {item["subtotal"]} VNĐ\n\n"
+        )
+        total += item["subtotal"]
+        index += 1
+        
+    cart_item += f"Tổng giá trị của giỏ hàng: {total}"
+    
+    return cart_item

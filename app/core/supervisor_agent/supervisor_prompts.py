@@ -49,6 +49,7 @@ def supervisor_system_prompt(members: str) -> str:
         "- Nếu AI đưa ra giỏ hàng và khách đồng ý lên đơn thì trả về nhân viên order_agent.\n"
         "- Nếu khách chọn 1 sản phẩm trong danh sách các sản phẩm mà AI đã đưa ra thì hãy gọi "
         "product_agent.\n"
+        "- Khi khách hỏi sản phẩm thì trả về nhân viên product_agent.\n"
         "Lưu ý chỉ trả về tên của nhân viên mà bạn phân công, không giải thích gì thêm."
     )
     

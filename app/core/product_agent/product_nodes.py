@@ -1,6 +1,8 @@
 from abc import update_abstractmethods
+import json
 from turtle import update
 from langgraph.types import interrupt, Command
+from sqlalchemy import ResultProxy
 from app.core import state
 from app.core.state import SellState
 from langchain_core.messages import HumanMessage, AIMessage
@@ -39,15 +41,19 @@ class ProductNodes:
             ]
         }
         
-        if result.get("seen_products", None):
-            update["seen_products"] = result["seen_products"]
+        if result.get("return_json", None):
+            data = json.loads(result["return_json"])
             
-        if result.get("product_chosen", None):
-            update["product_chosen"] = result["product_chosen"]
+            if data.get("seen_products", None):
+                update["seen_products"] = data["seen_products"]
+
+            if data.get("product_chosen", None):
+                update["product_chosen"] = data["product_chosen"]
         
         if result.get("next_node", None):
             next_node = result["next_node"]
             update["next_node"] = result["next_node"]
+        
         
         return Command(
             update=update,

@@ -1,3 +1,5 @@
+import json
+from aiohttp import content_disposition_filename
 from langchain_core.tools import tool, InjectedToolCallId
 from app.core.cart_agent.cart_prompts import add_cart_prompt
 from app.core.graph_function import GraphFunction
@@ -7,6 +9,7 @@ from typing import Annotated, List, TypedDict
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage
+from app.core.helper_function import _get_cart
 
 
 graph_function = GraphFunction()
@@ -46,8 +49,16 @@ def add_cart(
                 }
             ]
             
-            content = "Add product successfully. Call gat_cart tool to return cart to customer"
-            next_node = "cart_agent"
+            old_cart = state["cart"]
+            new_cart = old_cart + cart
+            get_cart = _get_cart(new_cart)
+            
+            content = (
+                "Add product successfully.\n"
+                "Here is cart of customer, return this to customer:\n"
+                f"{get_cart}"
+            )
+            next_node = "__end__"
         else:
             seen_products = state["seen_products"]
             content = (
@@ -56,11 +67,13 @@ def add_cart(
                 f"{seen_products}"
             )
             next_node = "product_agent"
+            
+        return_json = json.dumps(cart)
         
         return Command(
             update={
-                "cart": cart,
                 "next_node": next_node,
+                "return_json": return_json,
                 "messages": [
                     ToolMessage
                     (
@@ -116,3 +129,18 @@ def get_cart(
     except Exception as e:
         raise Exception(e)
     
+@tool
+def update_quantity(
+    tate: Annotated[SellState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
+    """Use this tool to update quanity of the chosen product in cart"""
+    pass
+
+@tool
+def remove_item(
+    tate: Annotated[SellState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
+    """Use this tool to remove a product in cart"""
+    pass
