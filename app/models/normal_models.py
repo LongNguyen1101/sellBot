@@ -1,5 +1,5 @@
-from sqlalchemy import (Column, Integer, String, 
-                        Text, Boolean, Date, Time, BigInteger, TIMESTAMP,
+from sqlalchemy import (Column, Integer, String, CheckConstraint,
+                        Text, text, Date, Time, BigInteger, TIMESTAMP,
                         DateTime, ForeignKey, UniqueConstraint, DECIMAL, JSON, MetaData)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -57,16 +57,27 @@ class Cart(Base):
 
 class Order(Base):
     __tablename__ = "orders"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'created', 'awaiting_payment', 'confirmed', 'processing', 'shipped', 'in_transit', 'delivered', 'cancelled', 'returned', 'refunded')",
+            name="check_order_status"
+        ),
+    )
 
     order_id = Column(BigInteger, primary_key=True, autoincrement=True)
-    status = Column(Text, default='pending', nullable=True)
-    order_total = Column(BigInteger, default=0, nullable=True)
-    shipping_fee = Column(BigInteger, default=0, nullable=True)
-    grand_total = Column(BigInteger, default=0, nullable=True)
+    status = Column(Text, server_default=text("'pending'"))
+    order_total = Column(BigInteger, server_default=text("0"))
+    shipping_fee = Column(BigInteger, server_default=text("0"))
+    grand_total = Column(BigInteger, server_default=text("0"))
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=False), default=func.now(), onupdate=func.now(), nullable=True)
-    payment = Column(Text, default='COD', nullable=True)
-    customer_id = Column(BigInteger, ForeignKey("customer.customer_id", ondelete="CASCADE"), nullable=True)
+    updated_at = Column(DateTime(timezone=False), server_default=func.now(), onupdate=func.now())
+    payment = Column(Text, server_default=text("'COD'"))
+    customer_id = Column(BigInteger, ForeignKey("customer.customer_id", ondelete="CASCADE"))
+    
+    # Thêm các trường mới
+    receiver_name = Column(Text)
+    receiver_phone_number = Column(Text)
+    receiver_address = Column(Text)
 
     # Relationships
     customer = relationship("Customer", back_populates="orders")

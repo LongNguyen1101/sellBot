@@ -1,6 +1,8 @@
+import comm
 from sqlalchemy import Boolean
 from sqlalchemy.orm import Session
 from app.chain.sell_chain import SellChain
+from app.core.model import init_model
 from app.db.database import get_db
 from app.models.normal_models import Customer, Order, OrderItem
 from app.services.crud_public import PublicCRUD
@@ -21,6 +23,7 @@ def get_public_crud():
 class GraphFunction:
     def __init__(self):
         self.chain = SellChain()
+        self.llm = init_model()
         
     def extract_product_name(self, user_input: str) -> List[str]:
         result = self.chain.extract_product_name().invoke(user_input)
@@ -114,6 +117,9 @@ class GraphFunction:
     
     def create_order(self,
                      customer_id: int,
+                     receiver_name: str,
+                     receiver_phone_number: str,
+                     receiver_address: str,
                      public_crud: PublicCRUD = next(get_public_crud())
     ) -> Optional[Order]:
         try:
@@ -179,16 +185,7 @@ class GraphFunction:
                 public_crud.db.close()
         return None, 0
     
-    def return_order(self, order_id: int, public_crud: PublicCRUD = next(get_public_crud())) -> List[dict]:
-        try:
-            return public_crud.get_order_items_with_details(order_id)
-        except SQLAlchemyError as e:
-            public_crud.db.rollback()
-            raise
-        finally:
-            public_crud.db.close()
-        
-    def get_order_items(self, order_id: int, public_crud: PublicCRUD = next(get_public_crud())) -> List[dict]:
+    def get_order_items_detail(self, order_id: int, public_crud: PublicCRUD = next(get_public_crud())) -> List[dict]:
         try:
             return public_crud.get_order_items_with_details(order_id)
         except SQLAlchemyError as e:
@@ -205,4 +202,39 @@ class GraphFunction:
             raise
         finally:
             public_crud.db.close()
-    
+            
+            
+    def get_order_by_command(self, 
+                  command: str,
+                  public_crud: PublicCRUD = next(get_public_crud())) -> List[dict]:
+        try:
+            return public_crud.execute_command(command)
+        except SQLAlchemyError as e:
+            public_crud.db.rollback()
+            raise
+        finally:
+            public_crud.db.close()
+            
+    def get_order_items(self,
+                       order_id: int,
+                       public_crud: PublicCRUD = next(get_public_crud())) ->  List[dict]:
+        
+        try:
+            order_items = public_crud.get_items_by_order_id(order_id)
+
+        except SQLAlchemyError as e:
+            public_crud.db.rollback()
+            raise
+        finally:
+            public_crud.db.close()
+            
+    def update_order_by_command(self, 
+                                command: str,
+                                public_crud: PublicCRUD = next(get_public_crud())) -> List[dict]:
+        try:
+            return public_crud.execute_command(command)
+        except SQLAlchemyError as e:
+            public_crud.db.rollback()
+            raise
+        finally:
+            public_crud.db.close()

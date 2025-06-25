@@ -29,13 +29,12 @@ def _get_customer_info(state: SellState):
     except Exception as e:
         raise Exception(e)
     
-def _return_order(order_id: int) -> str:
+def _return_order(order_id: int):
     try:
-        order_items = graph_function.get_order_items(order_id)
+        order_items = graph_function.get_order_items_detail(order_id)
         order_info = graph_function.get_order_info(order_id)
         
-        content = f"Mã đơn hàng: {order_id}"
-        print(f">>>> content: {content}")
+        content = f"Mã đơn hàng: {order_id}\n\n"
         index = 1
         
         for item in order_items:
@@ -61,12 +60,12 @@ def _return_order(order_id: int) -> str:
             f"Tổng đơn hàng (đã bao gồm phí ship): {order_info["grand_total"]}\n"
         )
         
-        return content
+        return content, order_items
         
     except Exception as e:
         raise
     
-def _get_cart(cart) -> str:
+def _get_cart(cart, name, phone_number, address) -> str:
     cart_item = ""
     index = 1
     total = 0
@@ -86,5 +85,14 @@ def _get_cart(cart) -> str:
         index += 1
         
     cart_item += f"Tổng giá trị của giỏ hàng: {total}"
+    cart_item += (
+        "Thông tin người nhận:\n"
+        f"- Tên người nhận: {name}.\n"
+        f"- Số điện thoại người nhận: {phone_number}.\n"
+        f"- Địa chỉ người nhận: {address}.\n"
+    )
     
     return cart_item
+
+def generate_sql(user_input: str, prompt: str) -> str:
+        pass

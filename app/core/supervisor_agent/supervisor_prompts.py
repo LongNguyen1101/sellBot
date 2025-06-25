@@ -18,7 +18,8 @@ def order_agent_role_prompt() -> str:
         "order agent: "
         "Nhân viên này có nhiệm vụ thực hiện các yêu cầu liên quan đến đặt hàng bao gồm: \n"
         "- Kiểm tra người dùng đăng nhập chưa.\n"
-        "- Đặt hàng"
+        "- Đặt hàng.\n"
+        "- Chỉnh sửa lại đơn hàng đã đặt.\n"
     )
     
 def customer_agent_role_prompt() -> str:
@@ -49,7 +50,10 @@ def supervisor_system_prompt(members: str) -> str:
         "- Nếu AI đưa ra giỏ hàng và khách đồng ý lên đơn thì trả về nhân viên order_agent.\n"
         "- Nếu khách chọn 1 sản phẩm trong danh sách các sản phẩm mà AI đã đưa ra thì hãy gọi "
         "product_agent.\n"
+        "- Nếu khách nói muốn bỏ bớt, mua thêm sản phẩm, thay đổi thông tin người nhận thì hãy gọi cart_agent "
+        "hãy nhớ dựa vào lịch sử chat để xác định khách muốn gì.\n"
         "- Khi khách hỏi sản phẩm thì trả về nhân viên product_agent.\n"
+        "- Nếu khách muốn cập nhật lại đơn hàng đã đặt như thêm, xoá, sửa sản phẩm thì trả về nhân viên order_agent.\n"
         "Lưu ý chỉ trả về tên của nhân viên mà bạn phân công, không giải thích gì thêm."
     )
     

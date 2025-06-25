@@ -8,12 +8,17 @@ from app.models.normal_models import (
 from datetime import datetime
 from typing import Optional, List
 from sqlalchemy import text
+from sqlalchemy.exc import ResourceClosedError
+
 
 class PublicCRUD:
     def __init__(self, db: Session):
         self.db = db
         
     # ------------------ OTHER QUERY ------------------ #
+    
+    def get_order_items_detail(self, order_id: int) -> Optional[dict]:
+        pass
     
     def get_order_summary_by_id(self, order_id: int) -> Optional[dict]:
         result = (
@@ -37,11 +42,11 @@ class PublicCRUD:
     def get_order_items_with_details(self, order_id: int) -> List[dict]:
         results = (
             self.db.query(
-                OrderItem.order_id,
+                # OrderItem.order_id,
                 OrderItem.product_id,
+                OrderItem.sku,
                 ProductDescription.product_name,
                 Pricing.variance_description.label("variance_name"),
-                OrderItem.sku,
                 OrderItem.quantity,
                 OrderItem.price,
                 OrderItem.subtotal,
@@ -55,10 +60,18 @@ class PublicCRUD:
         return [dict(row._mapping) for row in results]
     
     def execute_command(self, command: str) -> List[dict]:
-        sql = text(command)
-        results = self.db.execute(sql).fetchall()
-        
-        return [dict(row._mapping) for row in results]
+        sql = text(command.strip())
+        try:
+            result = self.db.execute(sql)
+            # Kiểm tra có trả về dòng không (SELECT, RETURNING, ...)
+            if result.returns_rows:
+                return [dict(row._mapping) for row in result.fetchall()]
+            else:
+                self.db.commit()  # Câu UPDATE, INSERT, DELETE cần commit
+                return []
+        except ResourceClosedError:
+            self.db.commit()
+            return []
     
     def search_products_by_keyword(self, keyword: str) -> List[dict]:
         results = (
@@ -163,12 +176,16 @@ class PublicCRUD:
     # ------------------ ORDER ------------------ #
     
     def create_order(self,
-                 customer_id: Optional[int] = None,
-                 status: Optional[str] = 'pending',
-                 order_total: Optional[int] = 0,
-                 shipping_fee: Optional[int] = 0,
-                 grand_total: Optional[int] = None,
-                 payment: Optional[str] = 'COD'
+                     customer_id: Optional[int] = None,
+                     status: Optional[str] = 'pending',
+                     order_total: Optional[int] = 0,
+                     shipping_fee: Optional[int] = 0,
+                     grand_total: Optional[int] = None,
+                     payment: Optional[str] = 'COD',
+                     receiver_name: Optional[str] = "Không có",
+                     receiver_phone_number: Optional[str] = "Không có",
+                     receiver_address: Optional[str] = "Không có",
+                 
     ) -> Order:
     
         if grand_total is None:
@@ -182,13 +199,19 @@ class PublicCRUD:
             grand_total=grand_total,
             payment=payment,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
+            receiver_name=receiver_name,
+            receiver_phone_number=receiver_phone_number,
+            receiver_address=receiver_address
         )
 
         self.db.add(order)
         self.db.commit()
         self.db.refresh(order)
         return order
+    
+    def get_done_order(self, customer_id: int):
+        pass
 
     def get_order_by_id(self, order_id: int) -> Optional[Order]:
         return self.db.query(Order).filter(Order.order_id == order_id).first()
@@ -227,7 +250,11 @@ class PublicCRUD:
             order.grand_total = grand_total
             
         order.updated_at = datetime.now()
-        order.status = "confirmed"
+        if payment == "COD":
+            order.status = "created"
+        else:
+            # If user not choose COD then wait for user pay order
+            order.status = "awaiting_payment"
 
         order.updated_at = datetime.now()
         self.db.commit()

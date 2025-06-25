@@ -37,12 +37,15 @@ class CustomerNodes:
         
         if response.get("name", None):
             update["name"] = response["name"]
+            update["receiver_name"] = response["receiver_name"]
         
         if response.get("phone_number", None):
             update["phone_number"] = response["phone_number"]
+            update["receiver_phone_number"] = response["receiver_phone_number"]
         
         if response.get("address", None):
             update["address"] = response["address"]
+            update["receiver_address"] = response["receiver_address"]
         
         update["next_node"] = response["next_node"]
         next_node = response["next_node"]
