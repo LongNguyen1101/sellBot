@@ -1,6 +1,6 @@
 from sqlalchemy import (Column, Integer, String, CheckConstraint,
                         Text, text, Date, Time, BigInteger, TIMESTAMP,
-                        DateTime, ForeignKey, UniqueConstraint, DECIMAL, JSON, MetaData)
+                        DateTime, ForeignKey, UniqueConstraint, SmallInteger, JSON, MetaData)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.db.database import Base
@@ -22,12 +22,14 @@ class Pricing(Base):
 
     pricing_id = Column(Integer, primary_key=True, autoincrement=True)
     product_id = Column(BigInteger, ForeignKey("product_description.product_id"), nullable=False)
-    variance_description = Column(Text)
+    variance_description = Column(Text, nullable=True)
     sku = Column(Text, nullable=False, unique=True)
-    price = Column(Integer)
+    price = Column(Integer, nullable=True)
+    inventory = Column(SmallInteger, nullable=True, default=0)
 
+    # Relationships
     product = relationship("ProductDescription", back_populates="pricing")
-    inventory = relationship("Inventory", back_populates="pricing", cascade="all, delete-orphan")
+    inventory_item = relationship("Inventory", back_populates="pricing", cascade="all, delete-orphan")
     order_items = relationship("OrderItem", back_populates="pricing", cascade="all, delete-orphan")
     
 class Inventory(Base):
@@ -41,7 +43,7 @@ class Inventory(Base):
     shelf = Column(Text)
     shelf_code = Column(Text)
 
-    pricing = relationship("Pricing", back_populates="inventory")
+    pricing = relationship("Pricing", back_populates="inventory_item")
     
 class Cart(Base):
     __tablename__ = "cart"

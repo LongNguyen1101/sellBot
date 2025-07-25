@@ -1,5 +1,9 @@
+from typing import Any, Optional
+
+from numpy import add
 from app.core.graph_function import GraphFunction
 from app.core.state import SellState
+from app.models.normal_models import Order
 
 graph_function = GraphFunction()
 
@@ -29,11 +33,8 @@ def _get_customer_info(state: SellState):
     except Exception as e:
         raise Exception(e)
     
-def _return_order(order_id: int):
+def _return_order(order_info: Order, order_items: Any, order_id: int):
     try:
-        order_items = graph_function.get_order_items_detail(order_id)
-        order_info = graph_function.get_order_info(order_id)
-        
         content = f"Mã đơn hàng: {order_id}\n\n"
         index = 1
         
@@ -51,48 +52,71 @@ def _return_order(order_id: int):
             index += 1
         
         content += (
-            f"Tên khách hàng: {order_info["customer_name"]}\n"
-            f"Số điện thoại khách hàng: {order_info["customer_phone"]}\n"
-            f"Địa chỉ khách hàng: {order_info["customer_address"]}\n"
-            f"Phương thức thanh toán: {order_info["payment"]}\n"
-            f"Tổng đơn hàng (chưa tính phí ship): {order_info["order_total"]}\n"
-            f"Phí ship: {order_info["shipping_fee"]}\n"
-            f"Tổng đơn hàng (đã bao gồm phí ship): {order_info["grand_total"]}\n"
+            "Thông tin người nhận:\n"
+            f"Tên khách hàng: {order_info.receiver_name}\n"
+            f"Số điện thoại khách hàng: {order_info.receiver_phone_number}\n"
+            f"Địa chỉ khách hàng: {order_info.receiver_address}\n"
+            f"Phương thức thanh toán: {order_info.payment}\n"
+            f"Ngày tạo đơn: {order_info.created_at.strftime('%d-%m-%Y')}.\n\n"
+            
+            "Giá trị đơn hàng:\n"
+            f"Tổng đơn hàng (chưa tính phí ship): {order_info.order_total} VNĐ\n"
+            f"Phí ship: {order_info.shipping_fee} VNĐ\n"
+            f"Tổng đơn hàng (đã bao gồm phí ship): {order_info.grand_total} VNĐ\n"
         )
         
-        return content, order_items
+        return content
         
     except Exception as e:
         raise
     
-def _get_cart(cart, name, phone_number, address) -> str:
+def _get_cart(cart: dict, 
+              name: Optional[str], 
+              phone_number: Optional[str], 
+              address: Optional[str]
+    ) -> str:
+    
     cart_item = ""
     index = 1
     total = 0
     
-    for item in cart:
+    for item in cart.values():
         cart_item += (
             f"STT: {index}\n"
-            f"Tên sản phẩm: {item["product_name"]}\n"
-            f"Tên phân loại: {item["variance_description"]}\n"
-            f"Mã sản phẩm: {item["product_id"]}\n"
-            f"Mã phân loại: {item["sku"]}\n"
-            f"Giá: {item["price"]} VNĐ\n"
-            f"Số lượng: {item["quantity"]} cái\n"
-            f"Tổng giá sản phẩm: {item["subtotal"]} VNĐ\n\n"
+            f"Tên sản phẩm: {item["Tên sản phẩm"]}\n"
+            f"Tên phân loại: {item["Tên phân loại"]}\n"
+            f"Mã sản phẩm: {int(item["Mã sản phẩm"])}\n"
+            f"Mã phân loại: {item["Mã phân loại"]}\n"
+            f"Giá: {item["Giá sản phẩm"]} VNĐ\n"
+            f"Số lượng: {item["Số lượng"]} cái\n"
+            f"Tổng giá sản phẩm: {item["Giá cuối cùng"]} VNĐ\n\n"
         )
-        total += item["subtotal"]
+        total += item["Giá cuối cùng"]
         index += 1
         
-    cart_item += f"Tổng giá trị của giỏ hàng: {total}"
+    cart_item += f"Tổng giá trị của giỏ hàng: {total}.\n\n"
     cart_item += (
         "Thông tin người nhận:\n"
-        f"- Tên người nhận: {name}.\n"
-        f"- Số điện thoại người nhận: {phone_number}.\n"
-        f"- Địa chỉ người nhận: {address}.\n"
+        f"- Tên người nhận: {name if name else "Không có thông tin"}.\n"
+        f"- Số điện thoại người nhận: {phone_number if phone_number else "Không có thông tin"}.\n"
+        f"- Địa chỉ người nhận: {address if address else "Không có thông tin"}.\n"
     )
     
     return cart_item
 
-def generate_sql(user_input: str, prompt: str) -> str:
-        pass
+def _add_cart(product: dict):
+    product_id = int(product["product_id"])
+    sku = product["sku"]
+    key = f"{product_id} - {sku}"
+    
+    value = {
+        "Mã sản phẩm": product_id,
+        "Mã phân loại": sku,
+        "Tên sản phẩm": product["product_name"],
+        "Tên phân loại": product["variance_description"],
+        "Giá sản phẩm":  int(product["price"]),
+        "Số lượng": 1,
+        "Giá cuối cùng": int(product["price"])
+    }
+    
+    return key, value

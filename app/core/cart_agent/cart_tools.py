@@ -1,10 +1,5 @@
-from ctypes import addressof
-import json
-from operator import add
-from click import Option
 from langchain_core.tools import tool, InjectedToolCallId
-from platformdirs import user_data_dir
-from app.core.cart_agent.cart_prompts import change_quantity_product_prompt, remove_product_prompt
+from app.core.cart_agent.cart_prompts import update_cart_prompt, choose_product_prompt
 from app.core.graph_function import GraphFunction
 from app.core.model import init_model
 from app.core.state import SellState
@@ -12,11 +7,20 @@ from typing import Annotated, List, Literal, Optional, TypedDict
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage
-from app.core.helper_function import _get_cart
+from app.core.helper_function import _get_cart, _add_cart, _return_order
+from app.core.supervisor_agent.supervisor_prompts import cart_agent_role_prompt
+from app.models.normal_models import Customer
 
 
 graph_function = GraphFunction()
 llm = init_model()
+
+class ProductChosen(TypedDict):
+    product_id: Optional[int]
+    sku: Optional[str]
+    product_name: Optional[str]
+    variance_description: Optional[str]
+    price: Optional[int]
 
 class AddCart(TypedDict):
     product_id: int
@@ -26,9 +30,8 @@ class AddCart(TypedDict):
     quantity: int
     price: int
     
-class UpdateQuantity(TypedDict):
-    product_id: Optional[int]
-    sku: Optional[str]
+class UpdateCart(TypedDict):
+    key: Optional[str]
     update_quantity: Optional[int]
 
 class RemoveProduct(TypedDict):
@@ -43,54 +46,145 @@ def add_cart(
 ) -> Command:
     """Use this tool to add product into cart"""
     try:
-        cart = []
+        seen_products = state["seen_products"]
+        user_input = state["user_input"]
+        cart = state["cart"]
+        
+        phone_number = state["phone_number"]
+        name = state["name"]
+        address = state["address"]
+
         content = ""
-        next_node = "__end__"
-        product_chosen = state["product_chosen"]
-        
-        name = state["name"] if state["name"] else "Không có thông tin"
-        phone_number = state["phone_number"] if state["phone_number"] else "Không có thông tin"
-        address = state["address"] if state["address"] else "Không có thông tin"
-        
-        if product_chosen is not None:
-            cart = [
-                {
-                    "product_id": product_chosen["product_id"],
-                    "sku": product_chosen["sku"],
-                    "product_name": product_chosen["product_name"],
-                    "variance_description": product_chosen["variance_description"],
-                    "quantity": 1,
-                    "price": product_chosen["price"],
-                    "subtotal": product_chosen["price"]
-                }
-            ]
-            
-            old_cart = state["cart"]
-            new_cart = old_cart + cart
-            get_cart = _get_cart(new_cart, name, phone_number, address)
-            
-            content = (
-                "Thêm sản phẩm thành công.\n"
-                "Đây là giỏ hàng của khách, hãy trả về cho khách:\n"
-                f"{get_cart}"
+        update = {}
+
+        messages = state["messages"][-5:]
+        chat_histories = [
+            {
+                "type": chat.type,
+                "content": chat.content
+            } for chat in messages
+        ]
+
+        messages = [
+            {"role": "system", "content": choose_product_prompt()},
+            {"role": "human", "content": (
+                f"Danh sách các sản phẩm khách đã xem: {seen_products}\n"
+                f"Lịch sử chat: {chat_histories}\n"
+                f"Tin nhắn của khách: {user_input}\n"
+                "Bạn hãy xác định sản phẩm mà khách chọn."
+            )}
+        ]
+
+        response = llm.with_structured_output(ProductChosen).invoke(messages)
+
+        if response["product_id"] is None:
+            content += (
+                "Không xác định được sản phẩm khách muốn hoặc không có sản phẩm nào đúng ý khách, "
+                "hãy dựa vào câu nói của khách để trả lời cho phù hợp."
             )
-            next_node = "__end__"
         else:
-            seen_products = state["seen_products"]
-            content = (
-                "Khách chưa chọn sản phẩm, hỏi lại khách muốn chọn sản phẩm nào.\n"
-                "Đây là các sản phẩm khách đã xem lần trước, gợi ý cho khách các sản phẩm này:\n"
-                f"{seen_products}"
-            )
-            next_node = "__end__"
+            key, value = _add_cart(response)
+            cart[key] = value
+            update["cart"] = cart
             
-        return_json = json.dumps(new_cart)
+            get_cart = _get_cart(cart, name, phone_number, address)
+
+            content += (
+                "Nói xác nhận với khách đã chọn sản phẩm <bạn hãy tự điền>\n"
+                "Không được nói đã thêm sản phẩm vào giỏ hàng hay đơn hàng.\n"
+                "Chỉ nói xác nhận khách đã chọn sản phẩm <bạn hãy tự điền>."
+                f"Đây là các sản phẩm của khách, hãy trả về y nguyên để khách kiểm tra:\n"
+                f"{get_cart}\n\n"
+                "Nếu thiếu thông tin (tên, địa chỉ, số điện thoại) nào thì nói khách cung cấp thông tin đó.\n"
+            )
+            
+            # if phone_number is None:
+            #     content += (
+            #         "Chưa có thông tin số điện thoại của khách.\n"
+            #         f"Đây là các sản phẩm của khách, hãy trả về y nguyên để khách kiểm tra:\n"
+            #         f"{get_cart}\n\n"
+            #         "Nhờ khách kiểm tra lại và xin các thông tin còn thiếu để tiến hành lên đơn cho khách."
+            #     )
+            # else:
+            #     if not name:
+            #         content += "Không có thông tin tên người nhận, hỏi khách tên người nhận.\n"
+            #     if not phone_number:
+            #         content += "Không có thông tin địa chỉ người nhận, hỏi khách địa chỉ người nhận.\n"
+                
+            #     content += (
+            #         "Đã có thông tin số điện thoại của khách.\n"
+            #         f"Đây là các sản phẩm của khách, hãy trả về y nguyên để khách kiểm tra:\n"
+            #         f"{get_cart}\n\n"
+            #         "Nhờ khách kiểm tra lại thông tin trên.\n"
+            #         "Nếu đã có đủ tên và địa chỉ người nhận thì hỏi khách muốn lên đơn luôn không.\n"
+            #         "Nếu thiếu một trong hai hoặc cả hai thông tin tên và địa chỉ người nhận thì hỏi khách.\n"
+            #     )
+
+
+        update["messages"] = [
+            ToolMessage
+            (
+                content=content,
+                tool_call_id=tool_call_id
+            ),
+        ]
+
+        return Command(
+            update=update
+        )
+    except Exception as e:
+        raise Exception(e)
+    
+@tool
+def get_cart(
+    state: Annotated[SellState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
+    """Use this tool to return items in cart to customer"""
+    try:
+        cart = state["cart"]
+        name = state["name"] if state["name"] else "Không có thông tin"
+        phone_number = state["phone_number"]
+        address = state["address"] if state["address"] else "Không có thông tin"
+        customer_id = state["customer_id"]
+        
+        cart_item = _get_cart(cart, name, phone_number, address)
+        
+        content = (
+            "Đây là thông tin các sản phẩm khách muốn mua:\n"
+            f"{cart_item}"
+            
+            "Lưu ý:\n"
+            "- Cần trả lời chính xác cho khách về thông tin trên.\n"
+            "- Nếu có danh sách các sản phẩm thì trả về chính xác các sản phẩm đó.\n"
+            "- Nếu không có sản phẩm nào thì thông báo khách chưa chọn sản phẩm nào.\n"
+            "- Tuyệt đối không được tự đưa ra sản phẩm.\n"
+        )
+        
+        if phone_number:
+            content += "Đã có số điện thoại của khách.\n"
+            unshipped_order = graph_function.check_unshipped_order(customer_id)
+            
+            if unshipped_order:
+                order_items, _ = _return_order(unshipped_order.order_id)
+                content += (
+                    "Khách có đơn chưa vận chuyển:\n"
+                    f"{order_items}."
+                    "Hiển thị đầy đủ đơn hàng khách đã đặt, thông báo nếu khách muốn lên đơn "
+                    "thì sản phẩm của khách sẽ được gộp vào đơn hàng này của khách.\n"
+                )
+            
+            content += (
+                "Hỏi khách kiểm tra lại lại các sản phẩm, nếu đúng thì lên đơn.\n"
+            )
+        else:
+            content += (
+                "Chưa có số điện thoại của khách.\n"
+                "Hỏi khách số điện thoại để dễ dàng tư vấn cho khách.\n"
+            )
         
         return Command(
             update={
-                "next_node": next_node,
-                "cart": new_cart,
-                "return_json": return_json,
                 "messages": [
                     ToolMessage
                     (
@@ -102,53 +196,25 @@ def add_cart(
         )
     except Exception as e:
         raise Exception(e)
-    
-@tool
-def get_cart(
-    state: Annotated[SellState, InjectedState],
-    tool_call_id: Annotated[str, InjectedToolCallId]
-) -> Command:
-    """Use this tool to return th item in cart to customer"""
-    try:
-        cart = state["cart"]
-        name = state["name"] if state["name"] else "Không có thông tin"
-        phone_number = state["phone_number"] if state["phone_number"] else "Không có thông tin"
-        address = state["address"] if state["address"] else "Không có thông tin"
-        cart_item = _get_cart(cart, name, phone_number, address)
-        
-        return Command(
-            update={
-                "next_node": "__end__",
-                "messages": [
-                    ToolMessage
-                    (
-                        content=cart_item,
-                        tool_call_id=tool_call_id
-                    )
-                ]
-            }
-        )
-    except Exception as e:
-        raise Exception(e)
 
 @tool
-def change_quantity_product(
+def update_cart(
     state: Annotated[SellState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
-    """Use this tool to change quantity of a specify product"""
+    """Use this tool to change quantity of a specify product in cart"""
     content = ""
     cart = state["cart"]
     user_input = state["user_input"]
     chat_histories = state["messages"]
     update = {}
     
-    name = state["name"] if state["name"] else "Không có thông tin"
-    phone_number = state["phone_number"] if state["phone_number"] else "Không có thông tin"
-    address = state["address"] if state["address"] else "Không có thông tin"
+    name = state["name"]
+    phone_number = state["phone_number"]
+    address = state["address"]
     
     msg = [
-        {"role": "system", "content": change_quantity_product_prompt()},
+        {"role": "system", "content": update_cart_prompt()},
         {"role": "human", "content": (
             f"Đây là cart: {cart}.\n"
             f"Đây là yêu cầu của người dùng: {user_input}.\n"
@@ -156,25 +222,30 @@ def change_quantity_product(
         )}
     ]
     
-    result = llm.with_structured_output(UpdateQuantity).invoke(msg)
+    result = llm.with_structured_output(UpdateCart).invoke(msg)
+    key = result["key"]
+    update_quantity = result["update_quantity"]
     
-    if result["product_id"] is None:
+    if result["key"] is None:
         content = "Không xác định được sản phẩm khách muốn thay đổi, hỏi lại khách."
     else:
-        update_quantity = result["update_quantity"]
+        print(f">>>> update_quantity: {update_quantity}")
         if update_quantity is None:
             content = "Không xác định được số lượng sản phẩm khách muốn thay đổi, hỏi lại khách."
+        elif update_quantity == 0.0:
+            # delete cart with key found
+            del cart["key"]
         else:
-            for item in cart:
-                if item["product_id"] == result["product_id"] and item["sku"] == result["sku"]:
-                    item["quantity"] = int(update_quantity)
-            get_cart = _get_cart(cart, name, phone_number, address)
+            cart[key]["Số lượng"] = int(update_quantity)
+            cart[key]["Giá cuối cùng"] = int(update_quantity) * cart[key]["Giá sản phẩm"]
+        
+        get_cart = _get_cart(cart, name, phone_number, address)
             
-            content = (
-                "Đã thay đổi số lượng thành công.\n"
-                "Trả lại giỏ hàng cho khách:\n"
-                f"{get_cart}"
-            )
+        content = (
+            "Đã sửa lại thông tin cho khách, xác nhận lại với khách thông tin vừa sửa.\n"
+            "Trả lại các sản phẩm cho khách:\n"
+            f"{get_cart}"
+        )
             
     update["cart"] = cart
     update["messages"] = [
@@ -184,54 +255,54 @@ def change_quantity_product(
             tool_call_id=tool_call_id
         )
     ]
-    
-    print(f">>>> Update: {update}")
    
     return Command(
         update=update
     )
     
 @tool
-def remove_product(
+def update_receiver_information_in_cart(
+    name: Annotated[Optional[str], "Receiver name"],
+    phone_number: Annotated[Optional[str], "Receiver phone number"],
+    address: Annotated[Optional[str], "Receiver address"],
     state: Annotated[SellState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
-    """Use this tool to remove product in cart"""
+    """Use this tool to update name or phone number or address of receiver in cart"""
     try:
-        content = ""
-        cart = state["cart"]
-        user_input = state["user_input"]
-        chat_histories = state["messages"]
         update = {}
-
-        name = state["name"] if state["name"] else "Không có thông tin"
-        phone_number = state["phone_number"] if state["phone_number"] else "Không có thông tin"
-        address = state["address"] if state["address"] else "Không có thông tin"
-
-        msg = [
-            {"role": "system", "content": remove_product_prompt()},
-            {"role": "human", "content": (
-                f"Đây là cart: {cart}.\n"
-                f"Đây là yêu cầu của người dùng: {user_input}.\n"
-                f"Đây là lịch sử chat: {chat_histories}."
-            )}
-        ]
-
-        result = llm.with_structured_output(RemoveProduct).invoke(msg)
-
-        if result["product_id"] is None:
-            content = "Không xác định được sản phẩm khách muốn thay đổi, hỏi lại khách."
-        else:
-            updated_cart = [item for item in cart if item["product_id"] != result["product_id"] and item["sku"] != result["sku"]]
-            get_cart = _get_cart(updated_cart, name, phone_number, address)
+        content = ""
+        customer_id = state["customer_id"]
+        cart = state["cart"]
+        
+        update["name"] = name
+        update["phone_number"] = phone_number
+        update["address"] = address
+        
+        update_receiver = graph_function.update_customer_info(
+            customer_id=customer_id,
+            name=name,
+            phone_number=phone_number,
+            address=address
+        )
+        
+        if update_receiver is not None:
+            if name is not None:
+                content += f"Đã cập nhật tên của người nhận: {name}\n"
+            if phone_number is not None:
+                content += f"Đã cập nhật số điện thoại của người nhận: {phone_number}\n"
+            if address is not None:
+                content += f"Đã câp địa chỉ của người nhận: {address}.\n"
             
-            content = (
-                "Đã thay đổi số lượng thành công.\n"
-                "Trả lại giỏ hàng cho khách:\n"
+            get_cart = _get_cart(cart, name, phone_number, address)
+                
+            content += (
+                "\nTrả lại các sản phẩm cho khách:\n"
                 f"{get_cart}"
             )
-
-        update["cart"] = updated_cart
+        else:
+            content += "Đã có lỗi xảy ra trong quá trình cập nhật thông tin khách hàng. Xin lỗi khách và xin quý khách thử lại."
+            
         update["messages"] = [
             ToolMessage
             (
@@ -239,7 +310,10 @@ def remove_product(
                 tool_call_id=tool_call_id
             )
         ]
-
-        print(f">>>> Update: {update}")
+        
+        return Command(
+            update=update
+        )
+        
     except Exception as e:
         raise Exception(e)

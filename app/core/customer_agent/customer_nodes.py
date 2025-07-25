@@ -1,6 +1,6 @@
 from langgraph.types import Command, interrupt
 from app.core.customer_agent.customer_prompts import customer_agent_system_prompt
-from app.core.customer_agent.customer_tools import find_customer, register_customer
+from app.core.customer_agent.customer_tools import add_phone_number, add_name_address, add_phone_name_address
 from app.core.state import SellState
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph.message import add_messages
@@ -19,50 +19,35 @@ class CustomerNodes:
         self.llm = init_model()
         self.create_customer_agent = create_react_agent(
             model=self.llm,
-            tools=[find_customer, register_customer],
+            tools=[add_phone_number, add_name_address, add_phone_name_address],
             prompt = customer_agent_system_prompt(),
             state_schema=SellState
         )
         
-    def customer_agent(self, state: SellState) -> Command[Literal["__end__", "cart_agent"]]:
+    def customer_agent(self, state: SellState) -> Command:
         response = self.create_customer_agent.invoke(state)
         content = response["messages"][-1].content
-        next_node = "__end__"
         update = {}
-        
+        update["next_node"] = "__end__"
         
         if response.get("customer_id", None):
             update["customer_id"] = response["customer_id"]
-            update["is_login"] = True
+            
+        if response.get("next_node", None):
+            update["next_node"] = response["next_node"]
         
         if response.get("name", None):
             update["name"] = response["name"]
-            update["receiver_name"] = response["receiver_name"]
         
         if response.get("phone_number", None):
             update["phone_number"] = response["phone_number"]
-            update["receiver_phone_number"] = response["receiver_phone_number"]
         
         if response.get("address", None):
             update["address"] = response["address"]
-            update["receiver_address"] = response["receiver_address"]
         
-        update["next_node"] = response["next_node"]
-        next_node = response["next_node"]
         update["messages"] = [AIMessage(content=content, name="customer_agent")]
         
         return Command(
             update=update,
-            goto=next_node
-        )
-    
-    def user_input_customer_agent_node(self, state: SellState) -> Command[Literal["customer_agent"]]:
-        user_input = interrupt(None)
-        
-        return Command(
-            update={
-                "messages": [HumanMessage(content=user_input)],
-                "user_input": user_input
-            },
-            goto="customer_agent"
+            goto=update["next_node"]
         )

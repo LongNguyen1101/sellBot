@@ -11,7 +11,6 @@ from app.chain.sell_chain import SellChain
 from app.core.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 from app.core.product_agent.product_tools import (
-    choose_product,
     get_products
 )
 from app.core.product_agent.product_prompts import product_agent_system_prompt
@@ -26,14 +25,13 @@ class ProductNodes:
         self.llm = init_model()
         self.create_product_agent = create_react_agent(
             model=self.llm,
-            tools=[get_products, choose_product],
+            tools=[get_products],
             prompt = product_agent_system_prompt(),
             state_schema=SellState
         )
         
-    def product_agent(self, state: SellState) -> Command[Literal["__end__", "cart_agent"]]:
+    def product_agent(self, state: SellState) -> Command[Literal["__end__"]]:
         result = self.create_product_agent.invoke(state)
-        next_node = "__end__"
         
         update = {
             "messages": [
@@ -41,22 +39,27 @@ class ProductNodes:
             ]
         }
         
-        if result.get("return_json", None):
-            data = json.loads(result["return_json"])
-            
-            if data.get("seen_products", None):
-                update["seen_products"] = data["seen_products"]
-
-            if data.get("product_chosen", None):
-                update["product_chosen"] = data["product_chosen"]
+        if result.get("cart", None):
+            update["cart"] = result["cart"]
         
-        if result.get("next_node", None):
-            next_node = result["next_node"]
-            update["next_node"] = result["next_node"]
+        if result.get("seen_products", None):
+            update["seen_products"] = result["seen_products"]
+            
+        if result.get("name", None):
+            update["name"] = result["name"]
+            
+        if result.get("phone_number", None):
+            update["phone_number"] = result["phone_number"]
+            
+        if result.get("address", None):
+            update["address"] = result["address"]
+            
+        if result.get("customer_id", None):
+            update["customer_id"] = result["customer_id"]
         
         
         return Command(
             update=update,
-            goto=next_node
+            goto="__end__"
         )
     

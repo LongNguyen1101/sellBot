@@ -26,7 +26,6 @@ engine = create_engine(
     poolclass=NullPool,
 )
 
-
 # Tạo session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

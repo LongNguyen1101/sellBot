@@ -1,4 +1,7 @@
 from json import JSONDecodeError
+from math import prod
+from os import PRIO_USER
+from click import Option
 from sqlalchemy.orm import Session
 from app.core.state import SellState
 from app.models.normal_models import (
@@ -8,17 +11,52 @@ from app.models.normal_models import (
 from datetime import datetime
 from typing import Optional, List
 from sqlalchemy import text
-from sqlalchemy.exc import ResourceClosedError
+from sqlalchemy.exc import ResourceClosedError, SQLAlchemyError
 
 
 class PublicCRUD:
     def __init__(self, db: Session):
         self.db = db
         
-    # ------------------ OTHER QUERY ------------------ #
+    # ------------------ EMBEDDING QUERY ------------------ #
     
-    def get_order_items_detail(self, order_id: int) -> Optional[dict]:
-        pass
+    def call_match_qna(self, embedding_vector: list[float], match_count: int = 5):
+        sql = text("""
+            SELECT * FROM match_qna(:query_embedding, :match_count)
+        """)
+
+        result = self.db.execute(sql, {
+            "query_embedding": embedding_vector,
+            "match_count": match_count
+        }).fetchall()
+
+        return [dict(r._mapping) for r in result]
+    
+    def call_match_common_situation(self, embedding_vector: list[float], match_count: int = 5):
+        sql = text("""
+            SELECT * FROM match_common_situations(:query_embedding, :match_count)
+        """)
+
+        result = self.db.execute(sql, {
+            "query_embedding": embedding_vector,
+            "match_count": match_count
+        }).fetchall()
+
+        return [dict(r._mapping) for r in result]
+    
+    def call_match_product_descriptions(self, embedding_vector: list[float], match_count: int = 5):
+        sql = text("""
+            SELECT * FROM match_product_descriptions(:query_embedding, :match_count)
+        """)
+
+        result = self.db.execute(sql, {
+            "query_embedding": embedding_vector,
+            "match_count": match_count
+        }).fetchall()
+
+        return [dict(r._mapping) for r in result]
+        
+    # ------------------ OTHER QUERY ------------------ #
     
     def get_order_summary_by_id(self, order_id: int) -> Optional[dict]:
         result = (
@@ -42,7 +80,7 @@ class PublicCRUD:
     def get_order_items_with_details(self, order_id: int) -> List[dict]:
         results = (
             self.db.query(
-                # OrderItem.order_id,
+                OrderItem.id.label("item_id"),
                 OrderItem.product_id,
                 OrderItem.sku,
                 ProductDescription.product_name,
@@ -82,13 +120,11 @@ class PublicCRUD:
                 Pricing.variance_description,
                 ProductDescription.brief_description,
                 Pricing.price,
-                Inventory.inventory_quantity
+                Pricing.inventory
             )
             .join(Pricing, ProductDescription.product_id == Pricing.product_id)
-            .join(Inventory, Pricing.sku == Inventory.sku)
             .filter(
                 ProductDescription.product_name.ilike(f"%{keyword}%"),
-                Inventory.inventory_quantity != 0,
                 Pricing.price != 0
             )
             .all()
@@ -113,15 +149,41 @@ class PublicCRUD:
         
         return dict(results._mapping) # chuyển kết quả thành list of dict
     
+    def search_products_by_product_ids(self, product_ids: List[int]) -> List[dict]:
+        results = (
+            self.db.query(
+                ProductDescription.product_id,
+                Pricing.sku,
+                ProductDescription.product_name,
+                Pricing.variance_description,
+                ProductDescription.brief_description,
+                Pricing.price,
+                Pricing.inventory
+            )
+            .join(Pricing, ProductDescription.product_id == Pricing.product_id)
+            .filter(
+                ProductDescription.product_id.in_(product_ids),
+                Pricing.inventory != 0,
+                Pricing.price != 0
+            )
+            .all()
+        )
+
+        return [dict(row._mapping) for row in results]
+    
     # ------------------ CUSTOMER ------------------ #
     
-    def create_customer(self, name: Optional[str] = None,
+    def create_customer(self, 
+                        name: Optional[str] = None,
                         phone_number: Optional[str] = None, 
-                        address: Optional[str] = None) -> Customer:
+                        address: Optional[str] = None,
+                        chat_id: str = None,
+    ) -> Customer:
         customer = Customer(
             name=name,
             phone_number=phone_number,
             address=address,
+            chat_id=chat_id,
             created_at=datetime.now()
         )
         self.db.add(customer)
@@ -141,10 +203,12 @@ class PublicCRUD:
     def get_all_customers(self) -> List[Customer]:
         return self.db.query(Customer).all()
 
-    def update_customer_info(self, customer_id: int,
+    def update_customer_info(self, 
+                             customer_id: int,
                              name: Optional[str] = None,
                              phone_number: Optional[str] = None,
-                             address: Optional[str] = None) -> Optional[Customer]:
+                             address: Optional[str] = None
+    ) -> Optional[Customer]:
         customer = self.get_customer_by_id(customer_id)
         if customer:
             if name is not None:
@@ -210,8 +274,28 @@ class PublicCRUD:
         self.db.refresh(order)
         return order
     
-    def get_done_order(self, customer_id: int):
-        pass
+    def get_unshipped_order(self, customer_id: int) -> Optional[Order]:
+        unshipped_statuses = ['pending', 'created', 'awaiting_payment', 'confirmed', 'processing']
+        return self.db.query(Order)\
+            .filter(Order.customer_id == customer_id)\
+            .filter(Order.status.in_(unshipped_statuses))\
+            .first()
+            
+    def get_shipped_order(self, customer_id: int) -> Optional[List[Order]]:
+        shipped_statuses = ['shipped', 'in_transit', 'delivered', 'cancelled', 'returned', 'refunded']
+        return self.db.query(Order)\
+            .filter(Order.customer_id == customer_id)\
+            .filter(Order.status.in_(shipped_statuses))\
+            .all()
+            
+    def get_editable_orders(self, customer_id: int) -> Optional[List[Order]]:
+        shipped_statuses = ['delivered', 'cancelled', 'returned', 'refunded']
+        return (
+            self.db.query(Order)
+            .filter(Order.customer_id == customer_id)
+            .filter(Order.status.notin_(shipped_statuses))
+            .all()
+        )
 
     def get_order_by_id(self, order_id: int) -> Optional[Order]:
         return self.db.query(Order).filter(Order.order_id == order_id).first()
@@ -234,7 +318,11 @@ class PublicCRUD:
                      payment: Optional[str] = None,
                      order_total: Optional[int] = None,
                      shipping_fee: Optional[int] = None,
-                     grand_total: Optional[int] = None
+                     grand_total: Optional[int] = None,
+                     receiver_name: Optional[str] = None,
+                     receiver_phone_number: Optional[str] = None,
+                     receiver_address: Optional[str] = None,
+                     status: Optional[str] = None
     ) -> Optional[Order]:
         order = self.get_order_by_id(order_id)
         if not order:
@@ -248,13 +336,16 @@ class PublicCRUD:
             order.shipping_fee = shipping_fee
         if grand_total is not None:
             order.grand_total = grand_total
+        if receiver_name is not None:
+            order.receiver_name = receiver_name
+        if receiver_phone_number is not None:
+            order.receiver_phone_number = receiver_phone_number
+        if receiver_address is not None:
+            order.receiver_address = receiver_address
+        if status is not None:
+            order.status = status
             
         order.updated_at = datetime.now()
-        if payment == "COD":
-            order.status = "created"
-        else:
-            # If user not choose COD then wait for user pay order
-            order.status = "awaiting_payment"
 
         order.updated_at = datetime.now()
         self.db.commit()
@@ -295,12 +386,25 @@ class PublicCRUD:
             self.db.refresh(item)
         return order_items
 
-
     def get_order_item_by_id(self, item_id: int) -> Optional[OrderItem]:
         return self.db.query(OrderItem).filter(OrderItem.id == item_id).first()
 
     def get_items_by_order_id(self, order_id: int) -> List[OrderItem]:
         return self.db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
+    
+    def get_items_by_order_id_sku_product_id(self,
+                                             order_id: int,
+                                             product_id: int,
+                                             sku: str) -> Optional[OrderItem]:
+        
+        return (
+            self.db.query(OrderItem)
+            .filter(
+                OrderItem.order_id == order_id,
+                OrderItem.product_id == product_id,
+                OrderItem.sku == sku
+            ).first()
+        )
 
     def update_order_item_quantity(self, item_id: int, new_quantity: int) -> Optional[OrderItem]:
         item = self.get_order_item_by_id(item_id)
@@ -311,6 +415,18 @@ class PublicCRUD:
             self.db.refresh(item)
             return item
         return None
+
+    def delete_items_item_id(self,
+                             item_id: int,
+    ) -> bool:
+        item = self.get_order_item_by_id(
+            item_id=item_id
+        )
+        if item:
+            self.db.delete(item)
+            self.db.commit()
+            return True
+        return False
 
     def delete_order_item(self, item_id: int) -> bool:
         item = self.get_order_item_by_id(item_id)
@@ -371,6 +487,36 @@ class PublicCRUD:
 
     def get_all_pricings(self):
         return self.db.query(Pricing).all()
+    
+    def decrease_inventory(self, order_items: List[OrderItem]):
+        try:
+            for item in order_items:
+                pricing_record = (
+                    self.db.query(Pricing)
+                    .filter(Pricing.sku == item.sku)
+                    .with_for_update()  
+                    .one_or_none()
+                )
+                if not pricing_record:
+                    continue
+                
+                if pricing_record:
+                    current_inventory = pricing_record.inventory or 0
+                    updated_inventory = current_inventory - item.quantity
+
+                    if updated_inventory < 0:
+                        raise ValueError(
+                            f"Không đủ tồn kho cho SKU={item.sku}: "
+                            f"hiện còn {updated_inventory}, yêu cầu {item.quantity}"
+                        )
+
+                    pricing_record.inventory = max(updated_inventory, 0)
+
+            self.db.commit()
+        except (ValueError, SQLAlchemyError) as e:
+            self.db.rollback()
+            # Log exception tuỳ theo context của bạn
+            raise 
 
     def update_pricing_price(self, sku: str, new_price: int) -> Optional[Pricing]:
         pricing = self.get_pricing_by_sku(sku)

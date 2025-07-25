@@ -9,38 +9,45 @@ from app.core.model import init_model
 from langgraph.graph.message import add_messages
 
 
-MEMBERS = ["product_agent", "cart_agent", "order_agent", "customer_agent"]
+MEMBERS = ["product_agent", "cart_agent", "order_agent", "customer_agent", "customer_service_agent", "__end__"]
 OPTIONS = MEMBERS + ["FINISH"]
 
 class SupervisorNodes:
     class Router(TypedDict):
-        next: str
+        next: Literal["product_agent", "cart_agent", "order_agent", "customer_agent", "customer_service_agent", "__end__"]
 
     def __init__(self):
         self.members = MEMBERS
         self.options = OPTIONS
         self.llm = init_model()
 
-    def supervisor_agent(
-        self, state: SellState
-    ) -> Command[Literal["product_agent", "cart_agent", "order_agent", "customer_agent", "__end__"]]:
-        user_input = state["user_input"]
-        state["messages"] = add_messages(state["messages"], [HumanMessage(content=user_input)])
+    def supervisor_agent(self, state: SellState) -> Command:
+        cart = state["cart"]
+        orders = state["orders"]
+        chat_his = [
+            {
+                "type": chat.type,
+                "content": chat.content
+            }
+            for chat in state["messages"][-5:]
+        ]
         
         messages = [
             {"role": "system", "content": supervisor_system_prompt(members=self.members)},
-        ] + state["messages"]
-
+            {"role": "human", "content": (
+                f"Lịch sử chat: {chat_his}\n"
+                f"Giỏ hàng của khách: {cart}.\n"
+                f"Đơn hàng của khách: {orders}\n"
+            )}
+        ]
+        
         response = self.llm.with_structured_output(self.Router).invoke(messages)
-
-        goto = response["next"]
-        if goto == "FINISH":
-            goto = END
+        
+        next_node = response["next"]
 
         return Command(
             update={
-                "messages": state["messages"],
-                "next_node": goto
+                "next_node": next_node
             },
-            goto=goto
+            goto=next_node
         )

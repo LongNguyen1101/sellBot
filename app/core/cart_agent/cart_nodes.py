@@ -8,8 +8,8 @@ from langgraph.prebuilt import create_react_agent
 from app.core.cart_agent.cart_tools import (
     add_cart,
     get_cart,
-    change_quantity_product,
-    remove_product
+    update_cart,
+    update_receiver_information_in_cart
 )
 from app.core.cart_agent.cart_prompts import cart_agent_system_prompt
 from app.core.model import init_model
@@ -17,27 +17,24 @@ from typing import Literal
 
 class CarttNodes:
     def __init__(self):
-        self.chain = SellChain()
         self.graph_function = GraphFunction()
         
         self.llm = init_model()
         self.create_cart_agent = create_react_agent(
             model=self.llm,
-            tools=[add_cart, get_cart, change_quantity_product, remove_product],
+            tools=[add_cart, get_cart, update_cart, update_receiver_information_in_cart],
             prompt = cart_agent_system_prompt(),
             state_schema=SellState
         )
         
     def cart_agent(self, state: SellState) -> Command[Literal["__end__"]]:
-        result = self.create_cart_agent.invoke(state, config={"verbose": True})
+        result = self.create_cart_agent.invoke(state)
         
         update = {
             "messages": [
                 AIMessage(content=result["messages"][-1].content, name="cart_agent")
             ],
         }
-        
-        next_node = result["next_node"]
         
         if result.get("cart", None):
             update["cart"] = result["cart"]
