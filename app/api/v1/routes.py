@@ -1,7 +1,6 @@
 from fastapi.responses import StreamingResponse
 import asyncio
 from fastapi import APIRouter
-from uuid import UUID, uuid4
 from pydantic import BaseModel
 from app.core.graph import build_graph
 from app.core.state import init_state
@@ -28,6 +27,7 @@ async def chat(request: ChatRequest):
 
     state = graph.get_state(config).values if graph.get_state(config).values else init_state()
     state["user_input"] = request.user_input
+    state["chat_id"] = request.chat_id
     
     events = graph.stream(state, config=config)
     return StreamingResponse(
@@ -56,3 +56,5 @@ async def stream_messages(events: Any, thread_id: str):
     except Exception as e:
         error_dict = {"error": str(e), "thread_id": thread_id}
         yield f"data: {json.dumps(error_dict, ensure_ascii=False)}\n\n"
+    finally:
+        yield "data: [DONE]\n\n"

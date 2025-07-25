@@ -66,7 +66,9 @@ def create_order(
                     "- Nếu thông tin trên đề cập sản phẩm được thêm mới thì bỏ qua, không thông báo cho khách.\n"
                     "- Nếu thông tin trên đề cập sản phẩm đã có sẵn trong đơn hàng, gộp đơn thì thông báo cho khách.\n"
                     "Trả về đơn hàng y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
-                    f"{order_detail}"
+                    f"{order_detail}.\n"
+                    "Nói khách đơn hàng sẽ được vận chuyển trong 3-5 ngày, khách để ý điện thoại "
+                    "để nhân viên giao hàng gọi.\n"
                 )
                 
                 # Save to state
