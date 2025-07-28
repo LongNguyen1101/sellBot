@@ -13,7 +13,6 @@ from app.core.order_agent.order_tools import (
 from app.core.state import SellState
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph.message import add_messages
-from app.chain.sell_chain import SellChain
 from app.core.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 

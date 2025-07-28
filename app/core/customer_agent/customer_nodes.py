@@ -4,7 +4,6 @@ from app.core.customer_agent.customer_tools import add_phone_number, add_name_ad
 from app.core.state import SellState
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph.message import add_messages
-from app.chain.sell_chain import SellChain
 from app.core.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 
@@ -13,7 +12,6 @@ from typing import Literal, TypedDict
 
 class CustomerNodes:
     def __init__(self):
-        self.chain = SellChain()
         self.graph_function = GraphFunction()
         
         self.llm = init_model()

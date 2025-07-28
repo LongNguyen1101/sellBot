@@ -2,9 +2,6 @@ from fastapi import FastAPI
 from app.api.v1.routes import router as api_router
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import Base, engine
-from dotenv import load_dotenv
-
-load_dotenv(override=True)
 
 app = FastAPI(title="My FastAPI Project")
 

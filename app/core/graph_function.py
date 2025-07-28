@@ -4,7 +4,6 @@ from fastapi import FastAPI
 from httpx import delete
 from openai import chat
 from sqlalchemy.orm import Session
-from app.chain.sell_chain import SellChain
 from app.core.model import init_model
 from app.db.database import get_db
 from app.models.normal_models import Customer, Order, OrderItem
@@ -33,7 +32,6 @@ def get_public_crud():
 
 class GraphFunction:
     def __init__(self):
-        self.chain = SellChain()
         self.llm = init_model()
         
     def extract_product_name(self, user_input: str) -> List[str]:

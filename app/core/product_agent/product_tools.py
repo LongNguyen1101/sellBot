@@ -3,7 +3,6 @@ from unittest import result
 from xmlrpc.client import ResponseError
 from langchain_core.tools import tool, InjectedToolCallId
 from app.core.graph_function import GraphFunction
-from app.chain.sell_chain import SellChain
 from app.core.model import init_model
 from app.core.product_agent.product_prompts import create_response_rag
 from app.core.state import SellState

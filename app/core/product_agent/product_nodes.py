@@ -7,7 +7,6 @@ from app.core import state
 from app.core.state import SellState
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.graph.message import add_messages
-from app.chain.sell_chain import SellChain
 from app.core.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 from app.core.product_agent.product_tools import (
@@ -19,7 +18,6 @@ from typing import Literal
 
 class ProductNodes:
     def __init__(self):
-        self.chain = SellChain()
         self.graph_function = GraphFunction()
         
         self.llm = init_model()

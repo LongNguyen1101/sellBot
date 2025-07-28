@@ -1,8 +1,6 @@
 from langgraph.types import interrupt, Command
 from app.core.state import SellState
 from langchain_core.messages import HumanMessage, AIMessage
-from langgraph.graph.message import add_messages
-from app.chain.sell_chain import SellChain
 from app.core.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 from app.core.cart_agent.cart_tools import (
