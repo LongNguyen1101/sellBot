@@ -1,12 +1,9 @@
-from tkinter import N
-from unittest import result
-from xmlrpc.client import ResponseError
 from langchain_core.tools import tool, InjectedToolCallId
 from app.core.graph_function import GraphFunction
 from app.core.model import init_model
 from app.core.product_agent.product_prompts import create_response_rag
 from app.core.state import SellState
-from typing import Annotated, List, TypedDict
+from typing import Annotated, TypedDict
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage

@@ -2,11 +2,7 @@ from app.core.supervisor_agent.supervisor_prompts import supervisor_system_promp
 from app.core.state import SellState
 from typing import Literal, TypedDict
 from langgraph.types import Command
-from langchain_core.messages import HumanMessage
-from langgraph.graph import END
-from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.model import init_model
-from langgraph.graph.message import add_messages
 
 
 MEMBERS = ["product_agent", "cart_agent", "order_agent", "customer_agent", "customer_service_agent", "__end__"]

@@ -1,7 +1,6 @@
-from app.core.customer_service_agent.customer_service_promtps import customer_service_system_prompt
 from app.core.graph_function import GraphFunction
 from app.core.model import init_model
-from typing import Annotated, List, TypedDict
+from typing import Annotated
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from app.core.state import SellState

@@ -1,8 +1,3 @@
-from math import prod
-from click import Option
-from fastapi import FastAPI
-from httpx import delete
-from openai import chat
 from sqlalchemy.orm import Session
 from app.core.model import init_model
 from app.db.database import get_db
@@ -11,7 +6,7 @@ from app.services.crud_public import PublicCRUD
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, date, time as dtime, timedelta
 from app.core.state import SellState
-from typing import List, Optional, Tuple
+from typing import List, Optional
 import json
 from dotenv import load_dotenv
 import os

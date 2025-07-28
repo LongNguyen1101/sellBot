@@ -1,14 +1,12 @@
-from langgraph.types import Command, interrupt
+from langgraph.types import Command
 from app.core.customer_agent.customer_prompts import customer_agent_system_prompt
 from app.core.customer_agent.customer_tools import add_phone_number, add_name_address, add_phone_name_address
 from app.core.state import SellState
-from langchain_core.messages import AIMessage, HumanMessage
-from langgraph.graph.message import add_messages
+from langchain_core.messages import AIMessage
 from app.core.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 
 from app.core.model import init_model
-from typing import Literal, TypedDict
 
 class CustomerNodes:
     def __init__(self):

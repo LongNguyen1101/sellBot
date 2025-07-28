@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from app.core.graph import build_graph
 from app.core.state import init_state
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage
 from typing import Any
 import json
 

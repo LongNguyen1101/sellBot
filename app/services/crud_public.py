@@ -1,9 +1,4 @@
-from json import JSONDecodeError
-from math import prod
-from os import PRIO_USER
-from click import Option
 from sqlalchemy.orm import Session
-from app.core.state import SellState
 from app.models.normal_models import (
     ProductDescription, Pricing, Inventory, Cart,
     Order, OrderItem, Customer

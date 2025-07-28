@@ -8,8 +8,6 @@ from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage
 from app.core.helper_function import _get_cart, _add_cart, _return_order
-from app.core.supervisor_agent.supervisor_prompts import cart_agent_role_prompt
-from app.models.normal_models import Customer
 
 
 graph_function = GraphFunction()
