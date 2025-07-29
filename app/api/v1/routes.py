@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from app.core.graph import build_graph
 from app.core.state import init_state
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from typing import Any
 import json
 
@@ -15,6 +15,7 @@ graph = build_graph()
 class ChatRequest(BaseModel):
     chat_id: str
     user_input: str
+    uuid: str
 
 @router.get("/")
 async def say_hello():
@@ -22,13 +23,15 @@ async def say_hello():
 
 @router.post("/chat")
 async def chat(request: ChatRequest):
-    thread_id = str(request.chat_id)
+    thread_id = str(request.uuid)
     config = {"configurable": {"thread_id": thread_id}}
 
     state = graph.get_state(config).values if graph.get_state(config).values else init_state()
     state["user_input"] = request.user_input
     state["chat_id"] = request.chat_id
     
+    print(f">>>> Process messages: {request.user_input}")
+    print(f">>>> Chat id: {request.chat_id} | uuid: {request.uuid}")
     events = graph.stream(state, config=config)
     return StreamingResponse(
         stream_messages(events, thread_id),
