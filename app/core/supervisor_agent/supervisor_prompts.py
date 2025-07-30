@@ -40,6 +40,17 @@ def customer_service_agent_role_prompt() -> str:
         "này có nhiệm vụ trả lời khi khách hàng hỏi cách sử dụng về sản phẩm, "
         "sản phẩm lỗi, ..."
     )
+    
+def irrelevant_agent_role_prompt() -> str:
+    return (
+        "irrelevant_agent: "
+        "Nhân viên này có nhiệm vụ trả lời các câu hỏi không liên quan, hoặc "
+        "mang tính chọc phá cửa hàng.\n"
+        "Các câu hỏi không liên quan như chào hỏi thông thường mà không "
+        "đưa ra yeu cầu nào khác.\n"
+        "Các câu chọc phá là các câu không hề liên quan đến cửa hàng hay các sản "
+        "phẩm như 1 + 1 = ?, hoặc bé nhiu tủi dạyyy, ...\n"
+    )
 
 def supervisor_system_prompt(members: List[str]) -> str:
     return (
@@ -51,6 +62,7 @@ def supervisor_system_prompt(members: List[str]) -> str:
         f"{order_agent_role_prompt()}\n"
         f"{customer_agent_role_prompt()}\n"
         f"{customer_service_agent_role_prompt()}\n"
+        f"{irrelevant_agent_role_prompt()}\n"
         "'__end__': nếu bạn xác định phản hổi của AI đã đáp ứng yêu cầu của khách thì trả về __end__"
         
         "Bạn sẽ được cung cấp các thông tin sau:\n"
@@ -86,5 +98,7 @@ def supervisor_system_prompt(members: List[str]) -> str:
         "   9.2. Nếu giỏ hàng của khách không rỗng thì:\n"
         "       9.2.1. Nếu đơn hàng của khách rỗng -> gọi cart_agent.\n"
         "       9.2.2. Nếu đơn hàng của khách không rỗng -> gọi order_agent.\n"
+        "10. Nếu khách đưa các yêu cầu hoặc câu hỏi không liên quan đến cửa hàng "
+        "hay các sản phẩm -> gọi irrelevant_agent.\n"
     )
     

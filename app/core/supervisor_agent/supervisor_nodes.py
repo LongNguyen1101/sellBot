@@ -5,12 +5,14 @@ from langgraph.types import Command
 from app.core.model import init_model
 
 
-MEMBERS = ["product_agent", "cart_agent", "order_agent", "customer_agent", "customer_service_agent", "__end__"]
+MEMBERS = (["product_agent", "cart_agent", "order_agent", "customer_agent",
+            "customer_service_agent", "irrelevant_agent", "__end__"])
 OPTIONS = MEMBERS + ["FINISH"]
 
 class SupervisorNodes:
     class Router(TypedDict):
-        next: Literal["product_agent", "cart_agent", "order_agent", "customer_agent", "customer_service_agent", "__end__"]
+        next: (Literal["product_agent", "cart_agent", "order_agent", 
+                       "customer_agent", "customer_service_agent", "irrelevant_agent", "__end__"])
 
     def __init__(self):
         self.members = MEMBERS
@@ -27,10 +29,12 @@ class SupervisorNodes:
         ]
         current_state = state.copy()
         current_state.pop("messages", None)
+        user_input = state["user_input"]
         
         messages = [
             {"role": "system", "content": supervisor_system_prompt(members=self.members)},
             {"role": "human", "content": (
+                f"Yêu cầu của khách: {user_input}.\n"
                 f"Lịch sử chat: {chat_his}\n"
                 f"Các thông tin thu thập được (state của chatbot): {current_state}"
             )}

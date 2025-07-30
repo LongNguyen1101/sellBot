@@ -2,6 +2,7 @@ from langgraph.graph import StateGraph
 from langgraph.checkpoint.memory import MemorySaver
 from app.core.cart_agent.cart_nodes import CarttNodes
 from app.core.customer_agent.customer_nodes import CustomerNodes
+from app.core.irrelevant_agent.irrelevant_nodes import IrrelevantNodes
 from app.core.order_agent.order_nodes import OrderNodes
 from app.core.supervisor_agent.supervisor_nodes import SupervisorNodes
 from app.core.product_agent.product_nodes import ProductNodes
@@ -25,6 +26,7 @@ def build_graph() -> StateGraph:
     order_node = OrderNodes()
     customer_node = CustomerNodes()
     customer_service_node = CustomerServiceNodes()
+    irrelevant_node = IrrelevantNodes()
     builder = StateGraph(SellState)
     
     # builder.add_node("greeting_user_node", user_node.greeting_user_node)
@@ -36,6 +38,7 @@ def build_graph() -> StateGraph:
     builder.add_node("customer_agent", customer_node.customer_agent, retry=retry_policy)
     builder.add_node("customer_service_agent", 
                      customer_service_node.customer_service_agent, retry=retry_policy)
+    builder.add_node("irrelevant_agent", irrelevant_node.irrelevant_agent, retry=retry_policy)
 
     builder.set_entry_point("user_input_node")
     
