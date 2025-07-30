@@ -31,6 +31,7 @@ class OrderNodes:
         )
         
     def order_agent(self, state: SellState) -> Command:
+        state["messages"] = state["messages"][-10:]
         response = self.create_order_agent.invoke(state)
         
         next_node = "__end__"

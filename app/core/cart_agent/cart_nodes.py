@@ -26,6 +26,7 @@ class CarttNodes:
         )
         
     def cart_agent(self, state: SellState) -> Command[Literal["__end__"]]:
+        state["messages"] = state["messages"][-10:]
         result = self.create_cart_agent.invoke(state)
         
         update = {

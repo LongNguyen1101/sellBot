@@ -7,4 +7,7 @@ load_dotenv()
 MODEL_NAME = os.getenv("MODEL_NAME")
 
 def init_model():
-    return ChatGoogleGenerativeAI(model=MODEL_NAME)
+    if MODEL_NAME.startswith("gemini"):
+        return ChatGoogleGenerativeAI(model=MODEL_NAME)
+    else:
+        return ChatOpenAI(model=MODEL_NAME)

@@ -23,6 +23,7 @@ class ProductNodes:
         )
         
     def product_agent(self, state: SellState) -> Command[Literal["__end__"]]:
+        state["messages"] = state["messages"][-10:]
         result = self.create_product_agent.invoke(state)
         
         update = {

@@ -21,6 +21,7 @@ class CustomerServiceNodes:
         )
         
     def customer_service_agent(self, state: SellState) -> Command[Literal["__end__"]]:
+        state["messages"] = state["messages"][-10:]
         result = self.create_customer_service_agent.invoke(state)
         
         update = {

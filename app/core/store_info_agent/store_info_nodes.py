@@ -18,7 +18,7 @@ class StoreInfoNodes:
                 "type": chat.type,
                 "content": chat.content
             }
-            for chat in state["messages"][-5:]
+            for chat in state["messages"][-10:]
         ]
         
         messages = [

@@ -21,6 +21,7 @@ class CustomerNodes:
         )
         
     def customer_agent(self, state: SellState) -> Command:
+        state["messages"] = state["messages"][-10:]
         response = self.create_customer_agent.invoke(state)
         content = response["messages"][-1].content
         update = {}
