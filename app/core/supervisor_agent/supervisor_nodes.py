@@ -18,22 +18,21 @@ class SupervisorNodes:
         self.llm = init_model()
 
     def supervisor_agent(self, state: SellState) -> Command:
-        cart = state["cart"]
-        orders = state["orders"]
         chat_his = [
             {
                 "type": chat.type,
                 "content": chat.content
             }
-            for chat in state["messages"][-5:]
+            for chat in state["messages"][-20:]
         ]
+        current_state = state.copy()
+        current_state.pop("messages", None)
         
         messages = [
             {"role": "system", "content": supervisor_system_prompt(members=self.members)},
             {"role": "human", "content": (
                 f"Lịch sử chat: {chat_his}\n"
-                f"Giỏ hàng của khách: {cart}.\n"
-                f"Đơn hàng của khách: {orders}\n"
+                f"Các thông tin thu thập được (state của chatbot): {current_state}"
             )}
         ]
         

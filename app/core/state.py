@@ -27,7 +27,6 @@ class SellState(AgentState):
     
     cart: Annotated[Optional[dict], remain_dict]
     seen_products: Annotated[List[dict], remain_list]
-    product_chosen: Annotated[Optional[dict], remain_value]
     
     orders: Annotated[list, remain_list]
 
@@ -45,7 +44,6 @@ def init_state() -> SellState:
 
         cart={},
         seen_products=[],
-        product_chosen=None,
         
         orders=[]
     )

@@ -15,7 +15,7 @@ import re
 
 load_dotenv()
 
-OPENAI_KEY = os.getenv("OPENAI_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def get_public_crud():
     """Generator function to provide a PublicCRUD instance with a database session."""
@@ -332,7 +332,7 @@ class GraphFunction:
         try:
             embedding_model = OpenAIEmbeddings(
                 model="text-embedding-3-small",  # hoặc text-embedding-ada-002
-                openai_api_key=OPENAI_KEY
+                openai_api_key=OPENAI_API_KEY
             )
             embedding_vector = embedding_model.embed_query(user_input)
             
@@ -352,7 +352,7 @@ class GraphFunction:
         try:
             embedding_model = OpenAIEmbeddings(
                 model="text-embedding-3-small",
-                openai_api_key=OPENAI_KEY
+                openai_api_key=OPENAI_API_KEY
             )
             embedding_vector = embedding_model.embed_query(user_input)
             
@@ -433,7 +433,7 @@ class GraphFunction:
         try:
             embedding_model = OpenAIEmbeddings(
                 model="text-embedding-3-small",
-                openai_api_key=OPENAI_KEY
+                openai_api_key=OPENAI_API_KEY
             )
             embedding_vector = embedding_model.embed_query(user_input)
             

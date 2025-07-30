@@ -52,7 +52,14 @@ def supervisor_system_prompt(members: List[str]) -> str:
         f"{customer_agent_role_prompt()}\n"
         f"{customer_service_agent_role_prompt()}\n"
         "'__end__': nếu bạn xác định phản hổi của AI đã đáp ứng yêu cầu của khách thì trả về __end__"
-        "Bạn sẽ được cung cấp lịch sử cuộc trò chuyện.\n"
+        
+        "Bạn sẽ được cung cấp các thông tin sau:\n"
+        "- Lịch sử cuộc trò chuyện.\n"
+        "- Các thông tin thu thập được của khách hàng (lưu trong state của chatbot), bạn hãy quan tâm đến các thông tin sau:\n"
+        "   - customer_id: id của khách hàng, nếu không có tức là khách hàng chưa cung cấp số điện thoại.\n"
+        "   - cart: giỏ hàng của khách, nếu không có tức là khách chưa chọn sản phẩm nào.\n"
+        "   - seen_products: các sản phẩm mà khách vừa xem.\n"
+        "   - orders: đơn hàng của khách, có thể là đơn mới đặt hoặc đơn đặt từ trước.\n"
         "Nhiệm vụ của bạn là dựa vào cuộc trò chuyện và xác định yêu cầu của khách. "
         "Từ đó phân công nhiệm vụ cho một nhân viên phù hợp.\n"
         
