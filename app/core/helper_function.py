@@ -78,27 +78,35 @@ def _get_cart(cart: dict,
     index = 1
     total = 0
     
-    for item in cart.values():
+    if cart:
+        for key, item in cart.items():
+            if key == "place_holder":
+                continue
+            
+            cart_item += (
+                f"STT: {index}\n"
+                f"Tên sản phẩm: {item["Tên sản phẩm"]}\n"
+                f"Tên phân loại: {item["Tên phân loại"]}\n"
+                f"Mã sản phẩm: {int(item["Mã sản phẩm"])}\n"
+                f"Mã phân loại: {item["Mã phân loại"]}\n"
+                f"Giá: {item["Giá sản phẩm"]} VNĐ\n"
+                f"Số lượng: {item["Số lượng"]} cái\n"
+                f"Tổng giá sản phẩm: {item["Giá cuối cùng"]} VNĐ\n\n"
+            )
+            total += item["Giá cuối cùng"]
+            index += 1
+
+        cart_item += f"Tổng giá trị của giỏ hàng: {total}.\n\n"
         cart_item += (
-            f"STT: {index}\n"
-            f"Tên sản phẩm: {item["Tên sản phẩm"]}\n"
-            f"Tên phân loại: {item["Tên phân loại"]}\n"
-            f"Mã sản phẩm: {int(item["Mã sản phẩm"])}\n"
-            f"Mã phân loại: {item["Mã phân loại"]}\n"
-            f"Giá: {item["Giá sản phẩm"]} VNĐ\n"
-            f"Số lượng: {item["Số lượng"]} cái\n"
-            f"Tổng giá sản phẩm: {item["Giá cuối cùng"]} VNĐ\n\n"
+            "Thông tin người nhận:\n"
+            f"- Tên người nhận: {name if name else "Không có thông tin"}.\n"
+            f"- Số điện thoại người nhận: {phone_number if phone_number else "Không có thông tin"}.\n"
+            f"- Địa chỉ người nhận: {address if address else "Không có thông tin"}.\n"
         )
-        total += item["Giá cuối cùng"]
-        index += 1
-        
-    cart_item += f"Tổng giá trị của giỏ hàng: {total}.\n\n"
-    cart_item += (
-        "Thông tin người nhận:\n"
-        f"- Tên người nhận: {name if name else "Không có thông tin"}.\n"
-        f"- Số điện thoại người nhận: {phone_number if phone_number else "Không có thông tin"}.\n"
-        f"- Địa chỉ người nhận: {address if address else "Không có thông tin"}.\n"
-    )
+    else:
+        cart_item += (
+            "Không còn sản phẩm nào mà khách muốn mua.\n"
+        )
     
     return cart_item
 

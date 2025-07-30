@@ -241,6 +241,7 @@ def update_cart(
         elif update_quantity == 0:
             # delete cart with key found
             del cart[key]
+            print(f">>>> Đã xoá {key}")
         else:
             cart[key]["Số lượng"] = int(update_quantity)
             cart[key]["Giá cuối cùng"] = int(update_quantity) * cart[key]["Giá sản phẩm"]
@@ -252,7 +253,10 @@ def update_cart(
             "Trả lại các sản phẩm cho khách:\n"
             f"{get_cart}"
         )
-            
+    
+    if not cart:
+        cart["place_holder"] = "None"
+    
     update["cart"] = cart
     update["messages"] = [
         ToolMessage

@@ -179,7 +179,10 @@ class GraphFunction:
         order_items: List[OrderItem] = []
         try:
             note = ""
-            for item_data in cart_items.values():
+            for key, item_data in cart_items.items():
+                if key == "place_holder":
+                    continue
+                
                 product_id_from_cart = item_data["Mã sản phẩm"]
                 sku_from_cart = item_data["Mã phân loại"]
                 quantity_to_add = item_data["Số lượng"]
