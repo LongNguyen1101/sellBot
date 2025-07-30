@@ -145,41 +145,49 @@ def get_cart(
         phone_number = state["phone_number"]
         address = state["address"] if state["address"] else "Không có thông tin"
         customer_id = state["customer_id"]
+        content = ""
         
-        cart_item = _get_cart(cart, name, phone_number, address)
-        
-        content = (
-            "Đây là thông tin các sản phẩm khách muốn mua:\n"
-            f"{cart_item}"
-            
-            "Lưu ý:\n"
-            "- Cần trả lời chính xác cho khách về thông tin trên.\n"
-            "- Nếu có danh sách các sản phẩm thì trả về chính xác các sản phẩm đó.\n"
-            "- Nếu không có sản phẩm nào thì thông báo khách chưa chọn sản phẩm nào.\n"
-            "- Tuyệt đối không được tự đưa ra sản phẩm.\n"
-        )
-        
-        if phone_number:
-            content += "Đã có số điện thoại của khách.\n"
-            unshipped_order = graph_function.get_unshipped_order(customer_id)
-            
-            if unshipped_order:
-                order_items, _ = _return_order(unshipped_order.order_id)
-                content += (
-                    "Khách có đơn chưa vận chuyển:\n"
-                    f"{order_items}."
-                    "Hiển thị đầy đủ đơn hàng khách đã đặt, thông báo nếu khách muốn lên đơn "
-                    "thì sản phẩm của khách sẽ được gộp vào đơn hàng này của khách.\n"
-                )
-            
+        if cart:
+            cart_item = _get_cart(cart, name, phone_number, address)
             content += (
-                "Hỏi khách kiểm tra lại lại các sản phẩm, nếu đúng thì lên đơn.\n"
+                "Đây là thông tin các sản phẩm khách muốn mua:\n"
+                f"{cart_item}"
+
+                "Lưu ý:\n"
+                "- Cần trả lời chính xác cho khách về thông tin trên.\n"
+                "- Nếu có danh sách các sản phẩm thì trả về chính xác các sản phẩm đó.\n"
+                "- Nếu không có sản phẩm nào thì thông báo khách chưa chọn sản phẩm nào.\n"
+                "- Tuyệt đối không được tự đưa ra sản phẩm.\n"
             )
+
+            if phone_number:
+                content += "Đã có số điện thoại của khách.\n"
+                unshipped_order = graph_function.get_unshipped_order(customer_id)
+
+                if unshipped_order:
+                    order_info, order_items = graph_function.get_order_detail(unshipped_order.order_id)
+                    order_detail = _return_order(order_info, order_items, unshipped_order.order_id)
+                    content += (
+                        "Khách có đơn chưa vận chuyển:\n"
+                        f"{order_detail}."
+                        "Hiển thị đầy đủ đơn hàng khách đã đặt, thông báo nếu khách muốn lên đơn "
+                        "thì sản phẩm của khách sẽ được gộp vào đơn hàng này của khách.\n"
+                    )
+
+                content += (
+                    "Hỏi khách kiểm tra lại lại các sản phẩm, nếu đúng thì lên đơn.\n"
+                )
+            else:
+                content += (
+                    "Chưa có số điện thoại của khách.\n"
+                    "Hỏi khách số điện thoại để dễ dàng tư vấn cho khách.\n"
+                )
         else:
             content += (
-                "Chưa có số điện thoại của khách.\n"
-                "Hỏi khách số điện thoại để dễ dàng tư vấn cho khách.\n"
+                "Giỏ hàng của khách đang trống.\n"
+                "Dựa vào seen_products hoặc lịch sử chat để hỏi khách có muốn mua gì không."
             )
+            
         
         return Command(
             update={
