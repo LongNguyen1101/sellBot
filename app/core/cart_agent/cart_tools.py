@@ -161,7 +161,7 @@ def get_cart(
         
         if phone_number:
             content += "Đã có số điện thoại của khách.\n"
-            unshipped_order = graph_function.check_unshipped_order(customer_id)
+            unshipped_order = graph_function.get_unshipped_order(customer_id)
             
             if unshipped_order:
                 order_items, _ = _return_order(unshipped_order.order_id)
@@ -230,7 +230,7 @@ def update_cart(
         print(f">>>> update_quantity: {update_quantity}")
         if update_quantity is None:
             content = "Không xác định được số lượng sản phẩm khách muốn thay đổi, hỏi lại khách."
-        elif update_quantity == 0.0:
+        elif update_quantity == 0:
             # delete cart with key found
             del cart[key]
         else:

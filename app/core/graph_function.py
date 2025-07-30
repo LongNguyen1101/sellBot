@@ -390,8 +390,9 @@ class GraphFunction:
             public_crud.db.close()
             
     def get_unshipped_order(self,
-                              customer_id: int,
-                              public_crud: PublicCRUD = next(get_public_crud())) -> Optional[Order]:
+                            customer_id: int,
+                            public_crud: PublicCRUD = next(get_public_crud())
+    ) -> Optional[Order]:
         
         try:
             return public_crud.get_unshipped_order(customer_id=customer_id)
