@@ -82,7 +82,7 @@ def add_cart(
             )
         else:
             key, value = _add_cart(response)
-            cart.pop("place_holder")
+            cart.pop("place_holder", None)
             cart[key] = value
             update["cart"] = cart
             
