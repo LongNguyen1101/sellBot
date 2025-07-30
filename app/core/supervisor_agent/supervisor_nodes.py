@@ -6,13 +6,13 @@ from app.core.model import init_model
 
 
 MEMBERS = (["product_agent", "cart_agent", "order_agent", "customer_agent",
-            "customer_service_agent", "irrelevant_agent", "__end__"])
+            "customer_service_agent", "irrelevant_agent", "store_info_agent", "__end__"])
 OPTIONS = MEMBERS + ["FINISH"]
 
 class SupervisorNodes:
     class Router(TypedDict):
-        next: (Literal["product_agent", "cart_agent", "order_agent", 
-                       "customer_agent", "customer_service_agent", "irrelevant_agent", "__end__"])
+        next: (Literal["product_agent", "cart_agent", "order_agent", "customer_agent",
+                       "customer_service_agent", "irrelevant_agent", "store_info_agent", "__end__"])
 
     def __init__(self):
         self.members = MEMBERS
