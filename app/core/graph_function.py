@@ -179,10 +179,7 @@ class GraphFunction:
         order_items: List[OrderItem] = []
         try:
             note = ""
-            for key, item_data in cart_items.items():
-                if key == "place_holder":
-                    continue
-                
+            for item_data in cart_items.values():
                 product_id_from_cart = item_data["Mã sản phẩm"]
                 sku_from_cart = item_data["Mã phân loại"]
                 quantity_to_add = item_data["Số lượng"]
@@ -199,7 +196,7 @@ class GraphFunction:
                                                                           new_quantity)
                     
                     note += (
-                        f"Sản phẩm: {product_name} với tên phân loại: {sku_name} "
+                        f"Sản phẩm: {product_name} (với tên phân loại: {sku_name}) "
                         "đã có trong đơn hàng bạn đặt trước đó. Tăng số lượng của sản phẩm này trong đơn hàng thành "
                         f"{new_quantity}.\n\n"
                     )
@@ -219,7 +216,7 @@ class GraphFunction:
                     order_items.append(order_item)
                     
                     note += (
-                        f"Sản phẩm: {product_name} với tên phân loại: {sku_name} "
+                        f"Sản phẩm: {product_name} (với tên phân loại: {sku_name}) "
                         "chưa có trong giỏ hàng. Thêm sản phẩm này vào trong giỏ hàng có sẵn."
                     )
                 

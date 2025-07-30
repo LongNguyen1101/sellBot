@@ -41,44 +41,53 @@ def create_order(
             content += "Không có thông tin tên người nhận và địa chỉ người nhận, hỏi khách hàng cung cấp thông tin.\n"
         else:
             cart_items = state["cart"]
-            
-            new_order = graph_function.get_or_create_order(
-                customer_id,
-                receiver_name=receiver_name,
-                receiver_phone_number=receiver_phone_number,
-                receiver_address=receiver_address,
-                shipping_fee=shipping_fee
-            )
-            
-            created_order_items, note = graph_function.add_cart_item_to_order(cart_items, new_order.order_id)
+            cart_items.pop("place_holder", None)
+            if cart_items:
+                print(f">>>> Thông tin giỏ hàng: {cart_items}")
 
-            if created_order_items is None:
-                content += "Lỗi không thể thêm các sản phẩm vào đơn hàng, vui lòng thử lại"
-            else:
-                order_info, order_items = graph_function.get_order_detail(new_order.order_id)
-                order_detail = _return_order(order_info, order_items, new_order.order_id)
-
-                content += (
-                    "Tạo đơn hàng thành công.\n"
-                    "Đây là thông tin về việc gộp đơn hay không:\n"
-                    f"{note}.\n"
-                    "- Nếu thông tin trên đề cập sản phẩm được thêm mới thì bỏ qua, không thông báo cho khách.\n"
-                    "- Nếu thông tin trên đề cập sản phẩm đã có sẵn trong đơn hàng, gộp đơn thì thông báo cho khách.\n"
-                    "Trả về đơn hàng y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
-                    f"{order_detail}.\n"
-                    "Nói khách đơn hàng sẽ được vận chuyển trong 3-5 ngày, khách để ý điện thoại "
-                    "để nhân viên giao hàng gọi.\n"
+                new_order = graph_function.get_or_create_order(
+                    customer_id,
+                    receiver_name=receiver_name,
+                    receiver_phone_number=receiver_phone_number,
+                    receiver_address=receiver_address,
+                    shipping_fee=shipping_fee
                 )
-                
-                # Save to state
-                order = {
-                    k: v for k, v in order_info.__dict__.items()
-                    if not k.startswith("_")
-                }
-                order["created_at"] = order["created_at"].strftime('%d-%m-%Y')
-                order["updated_at"] = order["updated_at"].strftime('%d-%m-%Y')
-                order["items"] = order_items
-                update["orders"] = [order]
+
+                created_order_items, note = graph_function.add_cart_item_to_order(cart_items, new_order.order_id)
+
+                if created_order_items is None:
+                    content += "Lỗi không thể thêm các sản phẩm vào đơn hàng, vui lòng thử lại"
+                else:
+                    order_info, order_items = graph_function.get_order_detail(new_order.order_id)
+                    order_detail = _return_order(order_info, order_items, new_order.order_id)
+
+                    content += (
+                        "Tạo đơn hàng thành công.\n"
+                        "Đây là thông tin về việc gộp đơn hay không:\n"
+                        f"{note}.\n"
+                        "- Nếu thông tin trên đề cập sản phẩm được thêm mới thì bỏ qua, không thông báo cho khách.\n"
+                        "- Nếu thông tin trên đề cập sản phẩm đã có sẵn trong đơn hàng, gộp đơn thì thông báo cho khách.\n"
+                        "Trả về đơn hàng y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
+                        f"{order_detail}\n"
+                        "Nói khách đơn hàng sẽ được vận chuyển trong 3-5 ngày, khách để ý điện thoại "
+                        "để nhân viên giao hàng gọi.\n"
+                    )
+
+                    # Save to state
+                    order = {
+                        k: v for k, v in order_info.__dict__.items()
+                        if not k.startswith("_")
+                    }
+                    order["created_at"] = order["created_at"].strftime('%d-%m-%Y')
+                    order["updated_at"] = order["updated_at"].strftime('%d-%m-%Y')
+                    order["items"] = order_items
+                    update["orders"] = [order]
+            else:
+                content += (
+                    "Khách chưa chọn sản phẩm nào.\n"
+                    "Dựa vào lịch sử để hỏi khách có muốn chọn sản phẩm đã xem không, "
+                    "nêu không có thông tin thì hỏi khách muốn mua gì.\n"
+                )
         
         update["messages"] = [
             ToolMessage
