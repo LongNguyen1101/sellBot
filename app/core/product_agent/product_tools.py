@@ -36,7 +36,7 @@ def get_products(
         content = ""
         update = {}
         
-        extract_products = graph_function.get_products_by_keyword(keyword)
+        extract_products = graph_function.get_products_by_keyword(keyword)[:5]
         seen_products = extract_products
         
         if len(extract_products) == 1:

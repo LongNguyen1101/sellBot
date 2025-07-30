@@ -232,7 +232,7 @@ def update_cart(
             content = "Không xác định được số lượng sản phẩm khách muốn thay đổi, hỏi lại khách."
         elif update_quantity == 0.0:
             # delete cart with key found
-            del cart["key"]
+            del cart[key]
         else:
             cart[key]["Số lượng"] = int(update_quantity)
             cart[key]["Giá cuối cùng"] = int(update_quantity) * cart[key]["Giá sản phẩm"]
