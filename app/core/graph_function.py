@@ -426,14 +426,22 @@ class GraphFunction:
         try:
             unshipped_order = public_crud.get_unshipped_order(customer_id=customer_id)
             
-            if unshipped_order is None:
-                return public_crud.create_order(customer_id=customer_id,
-                                                receiver_name=receiver_name,
-                                                receiver_phone_number=receiver_phone_number,
-                                                receiver_address=receiver_address,
-                                                shipping_fee=shipping_fee)
+            if not unshipped_order:
+                return public_crud.create_order(
+                    customer_id=customer_id,
+                    receiver_name=receiver_name,
+                    receiver_phone_number=receiver_phone_number,
+                    receiver_address=receiver_address,
+                    shipping_fee=shipping_fee
+                )
+                
+            return public_crud.update_order(
+                order_id=unshipped_order.order_id,
+                receiver_name=receiver_name,
+                receiver_phone_number=receiver_phone_number,
+                receiver_address=receiver_address
+            )
             
-            return unshipped_order
                 
         except SQLAlchemyError as e:
             public_crud.db.rollback()
