@@ -91,7 +91,8 @@ def add_cart(
             content += (
                 "Nói xác nhận với khách đã chọn sản phẩm <bạn hãy tự điền>\n"
                 "Không được nói đã thêm sản phẩm vào giỏ hàng hay đơn hàng.\n"
-                "Chỉ nói xác nhận khách đã chọn sản phẩm <bạn hãy tự điền>."
+                "Hãy nói xác nhận khách đã chọn sản phẩm <bạn hãy tự điền>.\n"
+                "Sau đó liệt kê thông tin dưới đây đầy đủ, không được bỏ bớt hay tóm gọn thông tin nào.\n"
                 f"Đây là các sản phẩm của khách, hãy trả về y nguyên để khách kiểm tra:\n"
                 f"{get_cart}\n\n"
                 "Nếu thiếu thông tin (tên, địa chỉ, số điện thoại) nào thì nói khách cung cấp thông tin đó.\n"

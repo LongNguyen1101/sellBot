@@ -501,13 +501,14 @@ class GraphFunction:
     def get_product_embedding_info(self, 
                                     user_input: str,
                                     match_count: int = 5,
-                                    number_of_products: int = 5,
+                                    number_of_products: int = 10,
                                     public_crud: PublicCRUD = next(get_public_crud())
     ) -> Optional[List[dict]]:
         try:
             product_id_list = []
             product_raw = self.retrieve_product_descriptions(user_input, match_count, public_crud)
 
+            print(f">>>> Product raw: {product_raw}")
             # get the list of product_id
             for data in product_raw:
                 match = re.search(r"mã sản phẩm:\s*(\d+)", data['content'])

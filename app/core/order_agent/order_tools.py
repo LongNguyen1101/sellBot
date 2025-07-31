@@ -63,8 +63,8 @@ def create_order(
 
                     content += (
                         "Tạo đơn hàng thành công.\n"
-                        "Đây là thông tin về việc gộp đơn hay không:\n"
-                        f"{note}.\n"
+                        "Đây là thông tin về việc gộp đơn khách đang đặt với đơn khách đã đặt trước đó nhưng chưa vận chuyễn hay không:\n"
+                        f"{note}\n"
                         "- Nếu thông tin trên đề cập sản phẩm được thêm mới thì bỏ qua, không thông báo cho khách.\n"
                         "- Nếu thông tin trên đề cập sản phẩm đã có sẵn trong đơn hàng, gộp đơn thì thông báo cho khách.\n"
                         "Trả về đơn hàng y nguyên cho khách (không được bớt thông tin sản phẩm):\n"

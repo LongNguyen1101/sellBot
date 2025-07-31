@@ -40,6 +40,7 @@ def get_products(
         seen_products = extract_products
         
         if len(extract_products) == 1:
+            print(">>>> Sử dụng SQL")
             key, value = _add_cart(extract_products[0])
             
             cart[key] = value
@@ -55,6 +56,7 @@ def get_products(
             )
             
         elif len(extract_products) > 1:
+            print(">>>> Sử dụng SQL")
             content += (
                 f"Thông báo tìm thấy nhiều sản phẩm phù hợp với khách, tổng cộng có {len(extract_products)} sản phẩm tìm được:\n"
                 f"{extract_products}.\n"
@@ -62,14 +64,18 @@ def get_products(
             )
                 
         elif len(extract_products) == 0:
-            content += "Thông báo không tìm thấy sản phẩm phù hợp với yêu cầu khách.\n"
+            print(">>>> Sử dụng embedding")
+            content += "Thông báo tìm thấy nhiều sản phẩm phù hợp với yêu cầu khách.\n"
             user_input = state["user_input"]
             alternate_products = graph_function.get_product_embedding_info(user_input, match_count=5)
             
             if alternate_products:
                 content += (
-                    "Đây là các sản phẩm thay thế, hỏi khách có sản phẩm nào vừa ý không.\n"
-                    f"{alternate_products}"
+                    "Đây là các sản phẩm, dựa vào yêu cầu của khách để chọn ra sản phẩm phù hợp nhất.\n"
+                    f"{alternate_products}\n"
+                    "Lưu ý nếu không có sản phẩm nào phù hợp, hãy nói là không tìm "
+                    "thấy sản phẩm theo yêu cầu của khách, "
+                    "đây là các sản phẩm tương tự, và hỏi khách có muốn không.\n"
                 )
                 
                 seen_products = alternate_products
