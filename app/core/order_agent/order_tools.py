@@ -83,6 +83,9 @@ def create_order(
                     order["updated_at"] = order["updated_at"].strftime('%d-%m-%Y')
                     order["items"] = order_items
                     update["orders"] = [order]
+                    
+                    # Delete cart
+                    update["cart"] = {"place_holder": "None"}
             else:
                 content += (
                     "Khách chưa chọn sản phẩm nào.\n"

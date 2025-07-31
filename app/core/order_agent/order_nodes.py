@@ -43,6 +43,9 @@ class OrderNodes:
             
         if response.get("orders", None):
             update["orders"] = response["orders"]
+            
+        if response.get("cart", None):
+            update["cart"] = response["cart"]
         
         if response.get("name", None):
             update["name"] = response["name"]
