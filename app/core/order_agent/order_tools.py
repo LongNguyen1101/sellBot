@@ -45,13 +45,15 @@ def create_order(
             if cart_items:
                 print(f">>>> Thông tin giỏ hàng: {cart_items}")
 
-                new_order = graph_function.get_or_create_order(
+                new_order, note = graph_function.get_or_create_order(
                     customer_id,
                     receiver_name=receiver_name,
                     receiver_phone_number=receiver_phone_number,
                     receiver_address=receiver_address,
                     shipping_fee=shipping_fee
                 )
+                
+                content += f"{note}\n"
 
                 created_order_items, note = graph_function.add_cart_item_to_order(cart_items, new_order.order_id)
 

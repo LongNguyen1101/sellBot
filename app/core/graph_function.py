@@ -422,7 +422,8 @@ class GraphFunction:
                             receiver_phone_number: str,
                             receiver_address: str,
                             shipping_fee: int,
-                            public_crud: PublicCRUD = next(get_public_crud())) -> Order:
+                            public_crud: PublicCRUD = next(get_public_crud())
+    ):
         try:
             unshipped_order = public_crud.get_unshipped_order(customer_id=customer_id)
             
@@ -433,14 +434,14 @@ class GraphFunction:
                     receiver_phone_number=receiver_phone_number,
                     receiver_address=receiver_address,
                     shipping_fee=shipping_fee
-                )
+                ), "Khách không có đơn nào chưa gửi, không gộp đơn, không thông báo cho khách."
                 
             return public_crud.update_order(
                 order_id=unshipped_order.order_id,
                 receiver_name=receiver_name,
                 receiver_phone_number=receiver_phone_number,
                 receiver_address=receiver_address
-            )
+            ), "Khách có đơn chưa gửi, gộp đơn, thông báo cho khách."
             
                 
         except SQLAlchemyError as e:
