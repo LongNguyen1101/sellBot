@@ -103,7 +103,7 @@ class GraphFunction:
         
         return chat_histories
     
-    def update_or_create_customer(self,
+    def create_or_update_customer(self,
                                   name: Optional[str] = None, 
                                   phone_number: Optional[str] = None,
                                   address: Optional[str] = None,
@@ -119,7 +119,7 @@ class GraphFunction:
                     phone_number=phone_number,
                     address=address
                 )
-                return update_customer
+                return update_customer, "Tìm thấy và cập nhật thông tin khách hàng."
             else:
                 customer = public_crud.create_customer(
                     name=name,
@@ -127,7 +127,59 @@ class GraphFunction:
                     address=address,
                     chat_id=chat_id
                 )
-                return customer
+                return customer, "Tạo khách hàng mới thành công."
+        except SQLAlchemyError as e:
+            public_crud.db.rollback()
+            raise 
+        finally:
+            public_crud.db.close()
+            
+    def get_customer(self,
+                     chat_id: str,
+                     public_crud: PublicCRUD = next(get_public_crud())
+    ) -> Optional[Customer]:
+        try:
+            return public_crud.get_customer_by_chat_id(chat_id)
+        except SQLAlchemyError as e:
+            public_crud.db.rollback()
+            raise 
+        finally:
+            public_crud.db.close()
+            
+    def create_customer(self,
+                        chat_id: str,
+                        name: Optional[str] = None, 
+                        phone_number: Optional[str] = None,
+                        address: Optional[str] = None,
+                        public_crud: PublicCRUD = next(get_public_crud())
+    ) -> Customer:
+        try:
+            return public_crud.create_customer(
+                chat_id=chat_id,
+                name=name,
+                phone_number=phone_number,
+                address=address
+            )
+        except SQLAlchemyError as e:
+            public_crud.db.rollback()
+            raise 
+        finally:
+            public_crud.db.close()
+            
+    def update_customer(self,
+                        customer_id: str,
+                        name: Optional[str] = None, 
+                        phone_number: Optional[str] = None,
+                        address: Optional[str] = None,
+                        public_crud: PublicCRUD = next(get_public_crud())
+    ) -> Customer:
+        try:
+            return public_crud.update_customer_info(
+                customer_id=customer_id,
+                name=name,
+                phone_number=phone_number,
+                address=address
+            )
         except SQLAlchemyError as e:
             public_crud.db.rollback()
             raise 

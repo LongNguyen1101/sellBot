@@ -1,6 +1,6 @@
 from langgraph.types import Command
 from app.core.customer_agent.customer_prompts import customer_agent_system_prompt
-from app.core.customer_agent.customer_tools import add_phone_number, add_name_address, add_phone_name_address
+from app.core.customer_agent.customer_tools import add_phone_name_address
 from app.core.state import SellState
 from langchain_core.messages import AIMessage
 from app.core.graph_function import GraphFunction
@@ -15,7 +15,7 @@ class CustomerNodes:
         self.llm = init_model()
         self.create_customer_agent = create_react_agent(
             model=self.llm,
-            tools=[add_phone_number, add_name_address, add_phone_name_address],
+            tools=[add_phone_name_address],
             prompt = customer_agent_system_prompt(),
             state_schema=SellState
         )
@@ -23,14 +23,14 @@ class CustomerNodes:
     def customer_agent(self, state: SellState) -> Command:
         state["messages"] = state["messages"][-10:]
         response = self.create_customer_agent.invoke(state)
+        
         content = response["messages"][-1].content
-        update = {}
-        update["next_node"] = "__end__"
+        update = {"next_node": "__end__"}
         
         if response.get("customer_id", None):
             update["customer_id"] = response["customer_id"]
             
-        if response.get("next_node", None):
+        if response.get("next_node", "__end__"):
             update["next_node"] = response["next_node"]
         
         if response.get("name", None):
@@ -43,6 +43,7 @@ class CustomerNodes:
             update["address"] = response["address"]
         
         update["messages"] = [AIMessage(content=content, name="customer_agent")]
+        print(f">>>> Update: {update}")
         
         return Command(
             update=update,

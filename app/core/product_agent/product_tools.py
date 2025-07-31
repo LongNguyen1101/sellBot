@@ -64,7 +64,7 @@ def get_products(
         elif len(extract_products) == 0:
             content += "Thông báo không tìm thấy sản phẩm phù hợp với yêu cầu khách.\n"
             user_input = state["user_input"]
-            alternate_products = graph_function.get_product_embedding_info(user_input, match_count=2)
+            alternate_products = graph_function.get_product_embedding_info(user_input, match_count=5)
             
             if alternate_products:
                 content += (

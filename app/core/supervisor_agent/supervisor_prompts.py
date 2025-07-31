@@ -72,8 +72,6 @@ def supervisor_system_prompt(members: List[str]) -> str:
         f"{irrelevant_agent_role_prompt()}\n"
         f"{store_info_agent_role_prompt()}\n"
         
-        "'__end__': nếu bạn xác định phản hổi của AI đã đáp ứng yêu cầu của khách thì trả về __end__"
-        
         "Bạn sẽ được cung cấp các thông tin sau:\n"
         "- Lịch sử cuộc trò chuyện.\n"
         "- Các thông tin thu thập được của khách hàng (lưu trong state của chatbot), bạn hãy quan tâm đến các thông tin sau:\n"
@@ -114,7 +112,7 @@ def supervisor_system_prompt(members: List[str]) -> str:
         "-> gọi nhân viên store_info_agent.\n"
         
         "Lưu ý:\n"
-        "- Việc trả gọi nhân viên là bắt buộc, nếu bạn không biết nên gọi nhân viên "
+        "- Việc gọi nhân viên là bắt buộc, nếu bạn không biết nên gọi nhân viên "
         "nào thì hãy mặc địch gọi cho nhân viên irrelevant_agent.\n"
     )
     
