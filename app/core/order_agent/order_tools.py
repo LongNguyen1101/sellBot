@@ -69,6 +69,7 @@ def create_order(
                         "- Nếu thông tin trên đề cập sản phẩm đã có sẵn trong đơn hàng, gộp đơn thì thông báo cho khách.\n"
                         "Trả về đơn hàng y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
                         f"{order_detail}\n"
+                        "Lưu ý không được bỏ bớt thông tin, liệt kê chi tiết cho khách.\n"
                         "Nói khách đơn hàng sẽ được vận chuyển trong 3-5 ngày, khách để ý điện thoại "
                         "để nhân viên giao hàng gọi.\n"
                     )
@@ -132,9 +133,8 @@ def get_all_orders(
                 update["phone_number"] = phone_number
                 update["address"] = address
                 update["customer_id"] = customer_id
-        
-        if not customer:
-            content += "Khách hàng chưa đăng ký trên hệ thống nên sẽ không có thông tin các đơn hàng, hỏi khách số điện thoại để đăng ký vào hệ thống.\n"
+            else:
+                content += "Khách hàng chưa đăng ký trên hệ thống nên sẽ không có thông tin các đơn hàng, hỏi khách số điện thoại để đăng ký vào hệ thống.\n"
         else:
             all_orders = graph_function.get_editable_orders(customer_id)[-5:]
 
