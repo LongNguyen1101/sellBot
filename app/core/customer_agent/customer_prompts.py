@@ -7,7 +7,20 @@ def customer_agent_system_prompt() -> str:
         "1. Nếu khách cung cấp thông tin tên, địa chỉ hoặc số điện thoại -> gọi tool add_phone_name_address.\n"
         "2. Nếu nhận được tin nhắn từ tool là thông báo lên đơn -> "
         "Không được đề cập đến bất kỳ nhân viên nào, "
-        "chỉ được thông báo khách chờ trong giây lát để lên đơn."
+        "chỉ được thông báo khách chờ trong giây lát để lên đơn.\n"
+        
+        "Đầu ra của bạn có dạng json như sau:\n"
+        """
+        {
+            "status": "asking" | "finish" | "incomplete_info",
+            "content": <nội dung phản hồi>
+        }
+        """
+        "Giải thích các trường trong đầu ra trên:\n"
+        """
+        - "status": Bạn cần lấy y nguyên giá trị status của ToolMessage và không được thay đổi.
+        - "content": Bạn cần tạo câu phản hồi dựa trên đoạn json của ToolMesssage trả về.
+        """
         
         "Lưu ý:"
         "- Xưng hô khách là 'khách'.\n"

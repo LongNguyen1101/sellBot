@@ -19,8 +19,8 @@ def order_agent_role_prompt() -> str:
     return (
         "order_agent: "
         "Nhân viên này có nhiệm vụ thực hiện các yêu cầu liên quan đến đặt hàng bao gồm: \n"
-        "- Kiểm tra người dùng đăng nhập chưa.\n"
         "- Đặt hàng.\n"
+        "- Lấy các đơn hàng thoã yêu cầu của khách.\n"
         "- Chỉnh sửa lại đơn hàng đã đặt.\n"
         "- Chỉnh sửa lại thông tin người nhận như tên, số điện thoại, địa chỉ của người nhận.\n"
     )
@@ -28,9 +28,8 @@ def order_agent_role_prompt() -> str:
 def customer_agent_role_prompt() -> str:
     return (
         "customer_agent: "
-        "Nhân viên này có nhiệm vụ kiểm tra khách hàng đã tạo tài khoản hay chưa bao gồm: \n"
-        "- Thêm số điện thoại vào hệ thống.\n"
-        "- Thêm tên và địa chỉ của khách vào hệ thống.\n"
+        "Nhân viên này có nhiệm vụ thêm thông tin của khách hàng bao gồm: \n"
+        "- Thêm tên, số điện thoại, địa chỉ của khách.\n"
     )
     
 def customer_service_agent_role_prompt() -> str:
@@ -47,7 +46,7 @@ def irrelevant_agent_role_prompt() -> str:
         "Nhân viên này có nhiệm vụ trả lời các câu hỏi không liên quan, hoặc "
         "mang tính chọc phá cửa hàng.\n"
         "Các câu hỏi không liên quan như chào hỏi thông thường mà không "
-        "đưa ra yeu cầu nào khác.\n"
+        "đưa ra yêu cầu nào khác.\n"
         "Các câu chọc phá là các câu không hề liên quan đến cửa hàng hay các sản "
         "phẩm như 1 + 1 = ?, hoặc bé nhiu tủi dạyyy, ...\n"
     )
@@ -73,6 +72,7 @@ def supervisor_system_prompt(members: List[str]) -> str:
         f"{store_info_agent_role_prompt()}\n"
         
         "Bạn sẽ được cung cấp các thông tin sau:\n"
+        "- Yêu cầu hiện tại dành cho bạn.\n"
         "- Lịch sử cuộc trò chuyện.\n"
         "- Các thông tin thu thập được của khách hàng (lưu trong state của chatbot), bạn hãy quan tâm đến các thông tin sau:\n"
         "   - customer_id: id của khách hàng, nếu không có tức là khách hàng chưa cung cấp số điện thoại.\n"

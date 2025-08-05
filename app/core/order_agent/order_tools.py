@@ -1,33 +1,100 @@
+from asyncio import tasks
+import json
 from langchain_core.tools import tool, InjectedToolCallId
-from app.core.graph_function import GraphFunction
+from sqlalchemy import Subquery
+from app.core.utils.graph_function import GraphFunction
 from app.core.model import init_model
 from app.core.order_agent.order_prompts import choose_order_prompt
 from app.core.state import SellState
-from typing import Annotated, Optional, TypedDict
+from typing import Annotated, Optional, Tuple, List
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage
-from app.core.helper_function import _return_order
+from app.core.utils.helper_function import return_order
 from datetime import date
+from app.core.utils.class_parser import AgentToolResponse, UpdateOrder, UpdateReceiverInfo
+from app.models.normal_models import Order
 
 graph_function = GraphFunction()
 llm = init_model()
 
-class UpdateOrder(TypedDict):
-    command: str
-    order_id: int
+def _check_customer(chat_id: int, 
+                    tool_response: ToolMessage
+) -> Tuple[ToolMessage, dict]:
+    try:
+        update = {}
+        
+        customer = graph_function.get_customer_by_chat_id(chat_id)
+        
+        if customer:
+            log = (
+                ">>>> Tìm thấy thông tin của khách:\n",
+                f"Tên: {customer.name}\n"
+                f"Số điện thoại: {customer.phone_number}\n"
+                f"Địa chỉ: {customer.address}\n"
+                f"ID khách: {customer.customer_id}.\n"
+            )
+            
+            print(log)
+            update.update({
+                "name": customer.name,
+                "phone_number":customer.phone_number,
+                "address":customer.address,
+                "customer_id":customer.customer_id
+            })
+            
+            tool_response["content"] += (
+                "Đã tìm thấy thông tin khách hàng.\n"
+            )
+        else:
+            tool_response["content"] += (
+                "Không có thông tin khách hàng.\n"
+            )
+            
+        return tool_response, update
+    except Exception as e:
+        raise Exception(e)
+
+def _extract_order(order_info: Optional[Order], 
+                   order_items: List[dict]
+) -> dict:
+    order = {
+        k: v for k, v in order_info.__dict__.items()
+        if not k.startswith("_")
+    }
+    order["created_at"] = order["created_at"].strftime('%d-%m-%Y')
+    order["updated_at"] = order["updated_at"].strftime('%d-%m-%Y')
+    order["items"] = order_items
     
-class UpdateReceiverInfo(TypedDict):
-    order_id: int
+    return order
+
+def _map_orders(all_orders: List[Order]) -> list:
+    orders = []
+    for order in all_orders:
+        data = {
+            k: v for k, v in order.__dict__.items()
+            if not k.startswith("_")
+        }
+        
+        items = graph_function.get_order_items_detail(data["order_id"])
+        
+        data["items"] = items
+        data["created_at"] = data["created_at"].strftime('%d-%m-%Y')
+        data["updated_at"] = data["updated_at"].strftime('%d-%m-%Y')
+        
+        orders.append(data)
+    return orders
     
 @tool
-def create_order(
+def create_order_tool(
     state: Annotated[SellState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to create order"""
     try:
         update = {}
+        tool_response: AgentToolResponse = {}
+        
         customer_id = state["customer_id"]
         receiver_name = state["name"]
         receiver_phone_number = state["phone_number"]
@@ -35,10 +102,13 @@ def create_order(
         shipping_fee = 50000
         payment = "COD"
         
-        content = ""
-        
-        if not receiver_name or not receiver_address:
-            content += "Không có thông tin tên người nhận và địa chỉ người nhận, hỏi khách hàng cung cấp thông tin.\n"
+        if not receiver_phone_number or not receiver_name or not receiver_address:
+            tool_response = {
+                    "status": "incomplete_info",
+                    "content": ("Không có thông tin tên người nhận và địa chỉ "
+                                "người nhận, hỏi khách hàng cung cấp thông tin.\n"
+                    )
+                }
         else:
             cart_items = state["cart"]
             cart_items.pop("place_holder", None)
@@ -53,17 +123,20 @@ def create_order(
                     shipping_fee=shipping_fee
                 )
                 
-                content += f"{note}\n"
+                tool_response["content"] = ""
+                tool_response["content"] += f"{note}\n"
 
                 created_order_items, note = graph_function.add_cart_item_to_order(cart_items, new_order.order_id)
 
                 if created_order_items is None:
-                    content += "Lỗi không thể thêm các sản phẩm vào đơn hàng, vui lòng thử lại"
+                    tool_response["status"] = "error"
+                    tool_response["content"] += "Lỗi không thể thêm các sản phẩm vào đơn hàng, vui lòng thử lại"
                 else:
                     order_info, order_items = graph_function.get_order_detail(new_order.order_id)
-                    order_detail = _return_order(order_info, order_items, new_order.order_id)
+                    order_detail = return_order(order_info, order_items, new_order.order_id)
 
-                    content += (
+                    tool_response["status"] = "finish"
+                    tool_response["content"] += (
                         "Tạo đơn hàng thành công.\n"
                         "Đây là thông tin về việc gộp đơn khách đang đặt với đơn khách đã đặt trước đó nhưng chưa vận chuyễn hay không:\n"
                         f"{note}\n"
@@ -77,86 +150,72 @@ def create_order(
                     )
 
                     # Save to state
-                    order = {
-                        k: v for k, v in order_info.__dict__.items()
-                        if not k.startswith("_")
-                    }
-                    order["created_at"] = order["created_at"].strftime('%d-%m-%Y')
-                    order["updated_at"] = order["updated_at"].strftime('%d-%m-%Y')
-                    order["items"] = order_items
-                    update["orders"] = [order]
+                    update["orders"] = [_extract_order(
+                        order_info=order_info,
+                        order_items=order_items
+                    )]
                     
                     # Delete cart
                     update["cart"] = {"place_holder": "None"}
             else:
-                content += (
-                    "Khách chưa chọn sản phẩm nào.\n"
-                    "Dựa vào lịch sử để hỏi khách có muốn chọn sản phẩm đã xem không, "
-                    "nêu không có thông tin thì hỏi khách muốn mua gì.\n"
-                )
+                tool_response = {
+                    "status": "incomplete_info",
+                    "content": (
+                        "Khách chưa chọn sản phẩm nào.\n"
+                        "Dựa vào lịch sử để hỏi khách có muốn chọn sản phẩm đã xem không, "
+                        "nếu không có thông tin thì hỏi khách muốn mua gì.\n"
+                    )
+                }
         
         update["messages"] = [
             ToolMessage
             (
-                content=content,
+                content=json.dumps(tool_response, ensure_ascii=False),
                 tool_call_id=tool_call_id
             )
         ]
         
-        return Command(
-            update=update
-        )
+        return Command(update=update)
+        
     except Exception as e:
         raise 
     
     
 @tool
-def get_all_orders(
+def get_all_orders_tool(
     state: Annotated[SellState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to get order based on request of customer"""
     try:
         update = {}
-        content = ""
+        tool_response: AgentToolResponse = {}
+        
         customer_id = state["customer_id"]
-        name = state["name"]
-        address = state["address"]
-        phone_number = state["phone_number"]
         
         if not customer_id:
-            chat_id = state["chat_id"]
-            customer = graph_function.get_customer_by_chat_id(chat_id)
+            customer = graph_function.get_customer_by_chat_id(state["chat_id"])
             
             if customer:
-                name = customer.name
-                address = customer.address
-                phone_number = customer.phone_number
                 customer_id = customer.customer_id
                 
-                update["name"] = name
-                update["phone_number"] = phone_number
-                update["address"] = address
-                update["customer_id"] = customer_id
+                update["name"] = customer.name
+                update["address"] = customer.address
+                update["phone_number"] = customer.phone_number
+                update["customer_id"] = customer.customer_id
             else:
-                content += "Khách hàng chưa đăng ký trên hệ thống nên sẽ không có thông tin các đơn hàng, hỏi khách số điện thoại để đăng ký vào hệ thống.\n"
+                tool_response = {
+                    "status": "asking",
+                    "content": (
+                        "Khách hàng chưa đăng ký trên hệ thống nên sẽ không có thông tin "
+                        "các đơn hàng, hỏi khách số điện thoại để đăng ký vào hệ thống.\n"
+                    )
+                }
         else:
             all_orders = graph_function.get_editable_orders(customer_id)[-5:]
 
             if all_orders:
-                orders = []
-                for order in all_orders:
-                    data = {
-                        k: v for k, v in order.__dict__.items()
-                        if not k.startswith("_")
-                    }
-                    items = graph_function.get_order_items_detail(data["order_id"])
-                    data["items"] = items
-                    data["created_at"] = data["created_at"].strftime('%d-%m-%Y')
-                    data["updated_at"] = data["updated_at"].strftime('%d-%m-%Y')
-
-                    orders.append(data)
-
+                orders = _map_orders(all_orders=all_orders)
                 update["orders"] = orders
                 
                 messages = [
@@ -169,95 +228,113 @@ def get_all_orders(
                 ]
                 
                 found_order = llm.invoke(messages).content
-                content += (
-                    "Đây là thông tin đơn hàng theo yêu cầu của khách.\n"
-                    "Hãy tóm gọn nhưng vẫn đủ thông tin và trả về cho khách.\n"
-                    "Khi tóm gọn bắt buộc phải có thông tin order_id và item_id của các sản phẩm.\n"
-                    "Hãy hỏi khách có đúng đơn này không và có muốn thực hiện yêu cầu của khách không.\n"
-                    f"{found_order}"
-                )
+                
+                tool_response = {
+                    "status": "asking",
+                    "content": (
+                        "Đây là thông tin đơn hàng theo yêu cầu của khách.\n"
+                        "Hãy tóm gọn nhưng vẫn đủ thông tin và trả về cho khách.\n"
+                        "Khi tóm gọn bắt buộc phải có thông tin order_id và item_id của các sản phẩm.\n"
+                        "Hãy hỏi khách có đúng đơn này không và có muốn thực hiện yêu cầu của khách không.\n"
+                        f"{found_order}"
+                    )
+                }
             else:
-                content += (
-                    "Hiện tại khách hàng chưa có đơn hàng nào đã được giao cho khách hoặc khách chưa đặt đơn hàng nào.\n"
-                )
+                tool_response = {
+                    "status": "asking",
+                    "content": (
+                        "Hiện tại khách hàng chưa có đơn hàng nào đã được "
+                        "giao cho khách hoặc khách chưa đặt đơn hàng nào.\n"
+                    )
+                }
 
         update["messages"] = [
             ToolMessage
             (
-                content=content,
+                content=json.dumps(tool_response, ensure_ascii=False),
                 tool_call_id=tool_call_id
             )
         ]
         
-        return Command(
-            update=update
-        )
+        return Command(update=update)
         
     except Exception as e:
         raise
     
 @tool
-def remove_item_from_order(
+def remove_item_from_order_tool(
     order_id: Annotated[Optional[int], "ID of order chosen by customer"],
     item_id: Annotated[Optional[int], "ID of the product in order_item"],
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to remove product out of specify order"""
     try:
+        tool_response: AgentToolResponse = {}
         update = {}
         content = ""
-        print(f">>>> item_id: {item_id}")
+        print(f">>>> ID of item: {item_id}")
         
         if not order_id:
-            content += "Không xác định được đơn hàng khách muốn, hỏi lại khách để xác định được.\n"
+            tool_response = {
+                "status": "incomplete_info",
+                "content": (
+                    "Không xác định được đơn hàng khách muốn, "
+                    "hỏi lại khách để xác định được.\n"
+                )
+            }
         else:
             if not item_id:
-                content += "Không xác định được sản phẩm khách muốn xoá, hỏi lại khách để xác định được.\n"
+                tool_response = {
+                    "status": "incomplete_info",
+                    "content": (
+                        "Không xác định được sản phẩm khách muốn xoá, "
+                        "hỏi lại khách để xác định được.\n"
+                    )
+                }
             else:
-                delete_item = graph_function.delete_item(
-                    item_id=item_id
-                )
+                delete_item = graph_function.delete_item(item_id=item_id)
                 
                 if delete_item:
-                    content += "Đã xoá thành công sản phẩm <bạn hãy điền vào> khỏi đơn hàng của khách.\n"
+                    tool_response["content"] = "Đã xoá thành công sản phẩm <bạn hãy điền vào> khỏi đơn hàng của khách.\n"
                     
                     order_info, order_items = graph_function.get_order_detail(order_id)
-                    order_detail = _return_order(order_info, order_items, order_id)
+                    order_detail = return_order(order_info, order_items, order_id)
 
-                    content += (
+                    tool_response["status"] = "finish"
+                    tool_response["content"] += (
                         "Trả về đơn hàng sau khi cập nhật y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
                         f"{order_detail}"
                     )
 
                     # Save to state
-                    order = {
-                        k: v for k, v in order_info.__dict__.items()
-                        if not k.startswith("_")
-                    }
-                    order["created_at"] = order["created_at"].strftime('%d-%m-%Y')
-                    order["updated_at"] = order["updated_at"].strftime('%d-%m-%Y')
-                    order["items"] = order_items
-                    update["orders"] = [order]
+                    update["orders"] = [_extract_order(
+                        order_info=order_info,
+                        order_items=order_items
+                    )]
                 else:
-                    content += "Đã có lỗi trong lúc xoá sản phẩm <bạn hãy điền vào>, nói khách vui lòng thử lại.\n"
+                    tool_response = {
+                        "status": "error",
+                        "content": (
+                            "Đã có lỗi trong lúc xoá sản phẩm <bạn hãy điền vào>, "
+                            "nói khách vui lòng thử lại.\n"
+                        )
+                    }
         
         update["messages"] = [
             ToolMessage
             (
-                content=content,
+                content=json.dumps(tool_response, ensure_ascii=False),
                 tool_call_id=tool_call_id
             )
         ]
         
-        return Command(
-            update=update
-        )
+        return Command(update=update)
         
     except Exception as e:
         raise
 
 @tool
-def update_item_quantity(
+def update_item_quantity_tool(
     order_id: Annotated[Optional[int], "ID of order chosen by customer"],
     item_id: Annotated[Optional[int], "ID of the product in order_item"],
     quantity: Annotated[Optional[int], "New quantity of the product which customer want to update"],
@@ -265,17 +342,35 @@ def update_item_quantity(
 ) -> Command:
     """Use this tool to update quantity of specify product in order"""
     try:
+        tool_response: AgentToolResponse = {}
         update = {}
-        content = ""
         
         if not order_id:
-            content += "Không xác định được đơn hàng khách muốn, hỏi lại khách để xác định được.\n"
+            tool_response = {
+                "status": "incomplete_info",
+                "content": (
+                    "Không xác định được đơn hàng khách muốn, "
+                    "hỏi lại khách để xác định được.\n"
+                )
+            }
         else:
             if not item_id:
-                content += "Không xác định được sản phẩm khách muốn cập nhật, hỏi lại khách để xác định được.\n"
+                tool_response = {
+                    "status": "incomplete_info",
+                    "content": (
+                        "Không xác định được sản phẩm khách muốn cập nhật, "
+                        "hỏi lại khách để xác định được.\n"
+                    )
+                }
             else:
                 if not quantity:
-                    content += "Không xác định được số lượng sản phẩm khách muốn cập nhật, hỏi lại khách.\n"
+                    tool_response = {
+                        "status": "incomplete_info",
+                        "content": (
+                            "Không xác định được số lượng sản phẩm khách "
+                            "muốn cập nhật, hỏi lại khách.\n"
+                        )
+                    }
                 else:
                     new_item = graph_function.update_order_item_quantity(
                         item_id=item_id,
@@ -283,49 +378,49 @@ def update_item_quantity(
                     )
 
                     if new_item:
-                        content += (
-                            "Đã thay đổi thành công sản phẩm <bạn hãy điền vào> "
-                            "từ <bạn hãy điền vào> cái thành <bạn hãy điền vào> cái.\n"
-                        )
-
+                        
                         order_info, order_items = graph_function.get_order_detail(order_id)
-                        order_detail = _return_order(order_info, order_items, order_id)
-
-                        content += (
-                            "Trả về đơn hàng sau khi cập nhật y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
-                            f"{order_detail}"
-                        )
+                        order_detail = return_order(order_info, order_items, order_id)
+                        
+                        tool_response = {
+                            "status": "finish",
+                            "content": (
+                                "Đã thay đổi thành công sản phẩm <bạn hãy điền vào> "
+                                "từ <bạn hãy điền vào> cái thành <bạn hãy điền vào> cái.\n"
+                                "Trả về đơn hàng sau khi cập nhật y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
+                                f"{order_detail}"
+                            )
+                        }
 
                         # Save to state
-                        order = {
-                            k: v for k, v in order_info.__dict__.items()
-                            if not k.startswith("_")
-                        }
-                        order["created_at"] = order["created_at"].strftime('%d-%m-%Y')
-                        order["updated_at"] = order["updated_at"].strftime('%d-%m-%Y')
-                        order["items"] = order_items
-                        
-                        update["orders"] = [order]
+                        update["orders"] = [_extract_order(
+                            order_info=order_info,
+                            order_items=order_items
+                        )]
                     else:
-                        content += "Đã có lỗi trong lúc cập nhật đơn hàng có mã là <bạn hãy điền vào>, nói khách vui lòng thử lại.\n"
+                        tool_response = {
+                            "status": "error",
+                            "content": (
+                                "Đã có lỗi trong lúc cập nhật đơn hàng có mã là "
+                                "<bạn hãy điền vào>, nói khách vui lòng thử lại.\n"
+                            )
+                        }
         
         update["messages"] = [
             ToolMessage
             (
-                content=content,
+                content=json.dumps(tool_response, ensure_ascii=False),
                 tool_call_id=tool_call_id
             )
         ]
         
-        return Command(
-            update=update
-        )
+        return Command(update=update)
         
     except Exception as e:
-        raise
+        raise Exception(e)
 
 @tool
-def update_receiver_info(
+def update_receiver_info_tool(
     name: Annotated[Optional[str], "Receiver name, None if human not mention"],
     phone_number: Annotated[Optional[str], "Receiver phone number, None if human not mention"],
     address: Annotated[Optional[str], "Receiver address, None if human not mention"],
@@ -335,15 +430,53 @@ def update_receiver_info(
 ) -> Command:
     """Use this tool to update name or phone number or address of receiver in order"""
     try:
+        tool_response: AgentToolResponse = {}
         update = {}
-        content = ""
         customer_id = state["customer_id"]
         
         if not order_id:
-            content += "Không xác định được order_id mà khách chọn.\n"
+            tool_response = {
+                "status": "incomplete_info",
+                "content": (
+                    "Không xác định được mã đơn hàng mà khách chọn.\n"
+                    "Xin khách cung cấp thông tin rõ hơn.\n"
+                )
+            }
         else:
             if not customer_id:
-                content += "Chưa có thông tin khách hàng nên không thể cập nhật được.\n"
+                tool_response, new_update = _check_customer(
+                    chat_id=state["chat_id"],
+                    tool_response=tool_response
+                )
+                
+                if new_update.get("customer_id", None) is not None:
+                    print(f">>>> Tìm thấy thông tin khách hàng trong hệ thống.")
+                    update.update(new_update)
+                    
+                    tool_response = {
+                        "status": "finish",
+                        "content": (
+                            "Tìm thấy thông tin khách hàng trong hệ thống.\n"
+                        )
+                    }
+                    
+                    tasks = state["tasks"]
+                    tasks.append(Subquery(
+                        id=tasks[-1]["id"] + 1,
+                        sub_query="Lấy tất cả đơn hàng cho khách."
+                    ))
+                    update["tasks"] = tasks
+                else:
+                    print(f">>>> Không tìm thấy thông tin khách hàng trong hệ thống.")
+                    tool_response = {
+                        "status": "finish",
+                        "content": (
+                            "Không có thông tin khách hàng trong hệ thống.\n"
+                            "Thông báo với khách có lẽ khách đã nhầm.\n"
+                            "Xin khách số điện thoại để tiện hỗ trợ, và "
+                            "nếu có thể thì xin cả tên và địa chỉ của khách.\n"
+                        )
+                    }
             else:
                 orders = state["orders"]
                 for order in orders:
@@ -364,22 +497,30 @@ def update_receiver_info(
                 )
                 
                 if new_order:
-                    content += "Đã cập nhật đơn hàng thành công cho khách."
+                    tool_response = {
+                        "status": "finish",
+                        "content": (
+                            "Đã cập nhật đơn hàng thành công cho khách."
+                        )
+                    }
                 else:
-                    content += "Đã sảy ra lỗi trong quá trình cập nhật, xin khách vui lòng thử lại."
+                    tool_response = {
+                        "status": "error",
+                        "content": (
+                            "Đã sảy ra lỗi trong quá trình cập nhật, xin khách vui lòng thử lại."
+                        )
+                    }
             
             
         update["messages"] = [
             ToolMessage
             (
-                content=content,
+                content=json.dumps(tool_response, ensure_ascii=False),
                 tool_call_id=tool_call_id
             )
         ]
         
-        return Command(
-            update=update
-        )
+        return Command(update=update)
         
     except Exception as e:
         raise Exception(e)

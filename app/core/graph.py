@@ -33,6 +33,7 @@ def build_graph() -> StateGraph:
     
     # builder.add_node("greeting_user_node", user_node.greeting_user_node)
     builder.add_node("user_input_node", user_node.user_input_node)
+    builder.add_node("split_request_node", user_node.split_request_node)
     builder.add_node("supervisor", supervisor_node.supervisor_agent)
     builder.add_node("product_agent", product_node.product_agent, retry=retry_policy)
     builder.add_node("cart_agent", cart_node.cart_agent, retry=retry_policy)

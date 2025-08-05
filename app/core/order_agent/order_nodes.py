@@ -1,63 +1,77 @@
+from typing import Literal
 from langgraph.types import Command
-from pydantic import BaseModel
 from app.core.order_agent.order_prompts import order_agent_system_prompt
 from app.core.order_agent.order_tools import (
-    create_order,
-    get_all_orders,
-    update_item_quantity,
-    remove_item_from_order,
-    update_receiver_info
+    create_order_tool,
+    get_all_orders_tool,
+    update_item_quantity_tool,
+    remove_item_from_order_tool,
+    update_receiver_info_tool
 )
 from app.core.state import SellState
 from langchain_core.messages import AIMessage
-from app.core.graph_function import GraphFunction
+from app.core.utils.class_parser import AgentToolResponse
+from app.core.utils.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 
 from app.core.model import init_model
+from app.core.utils.helper_function import get_chat_his
 
 class OrderNodes:
-    class OrderResponse(BaseModel):
-        next: str 
-        content: str
-        
     def __init__(self):
         self.graph_function = GraphFunction()
         self.llm = init_model()
         self.create_order_agent = create_react_agent(
             model=self.llm,
-            tools=[create_order, get_all_orders, update_receiver_info, update_item_quantity, remove_item_from_order],
+            tools=([create_order_tool, get_all_orders_tool, update_item_quantity_tool, 
+                    remove_item_from_order_tool, update_receiver_info_tool]),
             prompt = order_agent_system_prompt(),
             state_schema=SellState
         )
         
-    def order_agent(self, state: SellState) -> Command:
-        state["messages"] = state["messages"][-10:]
-        response = self.create_order_agent.invoke(state)
-        
+    def order_agent(self, 
+                    state: SellState
+    ) -> Command[Literal["__end__", "supervisor"]]:
+        state["messages"] = get_chat_his(
+            state["messages"],
+            start_offset=-10
+        )
+        tasks = state["tasks"]
         next_node = "__end__"
-        content = response["messages"][-1].content
-        
         update = {}
-        update["messages"] = [AIMessage(content=content, name="order_agent")]
+        
+        response = self.create_order_agent.invoke(state)
+        parse_response = AgentToolResponse.model_validate_json(response["messages"][-1].content)
+        status = parse_response.status
+        content = parse_response.content
+        
+        if response.get("tasks", None):
+            tasks.append(response["tasks"])
+            update["tasks"] = tasks
+            print(f">>>> tasks: {tasks}")
+        
+        if status == "asking":
+            next_node = "__end__"
+        elif status == "finish":
+            if len(tasks) > 0:
+                next_node = "supervisor"
+                content = None
+            else:
+                next_node = "__end__"
+        else:
+            next_node = "__end__"
+        
+        if content:
+            update["messages"] = [
+                AIMessage(content=content, name="order_agent")
+            ]
         update["next_node"] = next_node
             
-        if response.get("orders", None):
-            update["orders"] = response["orders"]
-            
-        if response.get("cart", None):
-            update["cart"] = response["cart"]
-        
-        if response.get("name", None):
-            update["name"] = response["name"]
-            
-        if response.get("phone_number", None):
-            update["phone_number"] = response["phone_number"]
-            
-        if response.get("address", None):
-            update["address"] = response["address"]
-            
-        if response.get("customer_id", None):
-            update["customer_id"] = response["customer_id"]
+        for key in ["orders", "cart", "name", "phone_number", "address", "customer_id"]:
+           if response.get(key, None) is not None:
+               update[key] = response[key]
+               
+        print(f">>>> Update: {update}")
         
         return Command(
             update=update,

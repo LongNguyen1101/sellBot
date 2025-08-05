@@ -12,6 +12,19 @@ def cart_agent_system_prompt() -> str:
         "- Khách muốn thay đổi số lượng mua sản phẩm -> gọi tool update_cart.\n"
         "- Khách muốn thay đổi thông tin người nhận (tên, địa chỉ, số điện thoại) -> gọi tool update_receiver_information_in_cart.\n"
         
+        "Đầu ra của bạn có dạng json như sau:\n"
+        """
+        {
+            "status": "asking" | "finish" | "incomplete_info",
+            "content": <nội dung phản hồi>
+        }
+        """
+        "Giải thích các trường trong đầu ra trên:\n"
+        """
+        - "status": Bạn cần lấy y nguyên giá trị status của ToolMessage và không được thay đổi.
+        - "content": Bạn cần tạo câu phản hồi dựa trên đoạn json của ToolMesssage trả về.
+        """
+        
         "Lưu ý khi trò chuyện với khách:\n"
         "- Bắt buộc phải gọi 1 tool tương ứng với yêu cầu của khách, không được tự ý trả lời.\n"
         "- Không hiển thị tên công cụ bạn sử dụng.\n"
@@ -162,6 +175,7 @@ def choose_product_prompt() -> str:
             "price": giá sản phẩm
         }
         """
-        "Nếu bạn không thể xác định được sản phẩm mà khách muốn đặt, hãy trả về null hết tất cả các trường."
-        "Lưu ý chỉ được trả về json và không giải thích gì thêm."
+        "Nếu bạn không thể xác định được sản phẩm mà khách muốn đặt, hãy trả về null hết tất cả các trường.\n"
+        "Nếu Danh sách sản phẩm mà khách đã xem chỉ có duy nhất 1 sản phẩm thì mặc định trả về sản phẩm đó.\n"
+        "Lưu ý chỉ được trả về json và không giải thích gì thêm.\n"
     )

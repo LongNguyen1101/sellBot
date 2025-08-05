@@ -1,11 +1,22 @@
-from typing import Any, Optional
-from app.core.graph_function import GraphFunction
+from typing import Any, Optional, Literal
+from app.core.utils.graph_function import GraphFunction
 from app.core.state import SellState
 from app.models.normal_models import Order
+from pydantic import BaseModel
 
 graph_function = GraphFunction()
+    
+def get_chat_his(messages: list, 
+                 start_offset: int = -10, 
+                 stop_offset: Optional[int] = None
+) -> list:
+    sliced = messages[start_offset:stop_offset]
+    try:
+        return [{"type": chat.type, "content": chat.content} for chat in sliced]
+    finally:
+        return sliced
 
-def _get_customer_info(state: SellState):
+def get_customer_info(state: SellState):
     try:
         missing_info = []
         content = ""
@@ -31,7 +42,7 @@ def _get_customer_info(state: SellState):
     except Exception as e:
         raise Exception(e)
     
-def _return_order(order_info: Order, order_items: Any, order_id: int):
+def return_order(order_info: Order, order_items: Any, order_id: int):
     try:
         content = f"Mã đơn hàng: {order_id}\n\n"
         index = 1
@@ -68,7 +79,7 @@ def _return_order(order_info: Order, order_items: Any, order_id: int):
     except Exception as e:
         raise
     
-def _get_cart(cart: dict, 
+def get_cart(cart: dict, 
               name: Optional[str], 
               phone_number: Optional[str], 
               address: Optional[str]
@@ -110,7 +121,7 @@ def _get_cart(cart: dict,
     
     return cart_item
 
-def _add_cart(product: dict):
+def add_cart(product: dict):
     product_id = int(product["product_id"])
     sku = product["sku"]
     key = f"{product_id} - {sku}"
@@ -126,3 +137,4 @@ def _add_cart(product: dict):
     }
     
     return key, value
+

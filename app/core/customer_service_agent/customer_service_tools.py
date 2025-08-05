@@ -1,4 +1,6 @@
-from app.core.graph_function import GraphFunction
+import json
+from app.core.utils.class_parser import AgentToolResponse
+from app.core.utils.graph_function import GraphFunction
 from app.core.model import init_model
 from typing import Annotated
 from langgraph.prebuilt import InjectedState
@@ -11,7 +13,7 @@ graph_function = GraphFunction()
 llm = init_model()
 
 @tool
-def get_qna(
+def get_qna_tool(
     state: Annotated[SellState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
@@ -19,33 +21,39 @@ def get_qna(
     try:
         user_input = state["user_input"]
         documents = graph_function.retrieve_qna(user_input)
-        update = {}
+        tool_response: AgentToolResponse = {}
         
         contents = [
             {
                 "id": data["id"],
                 "content": data["content"],
                 "similarity": data["similarity"]
-            } for data in documents]
+            } for data in documents
+        ]
         
         print(f">>> Contents: {contents}")
         
-        response = (
-            f"Đây là các tài liệu liên quan: {contents}\n"
-            f"Đây là yêu cầu của người dùng: {user_input}\n"
-            "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
-            "sử dụng các tài liệu liên quan.\n"
-            "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
-            "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
-        )
-        
-        update["messages"] = [
-            ToolMessage
-            (
-                content=response,
-                tool_call_id=tool_call_id
+        tool_response = {
+            "status": "finish",
+            "content": (
+                f"Đây là các tài liệu liên quan: {contents}\n"
+                f"Đây là yêu cầu của người dùng: {user_input}\n"
+                "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
+                "sử dụng các tài liệu liên quan.\n"
+                "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
+                "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
             )
-        ]
+        }
+        
+        update = {
+            "messages": [
+                ToolMessage
+                (
+                    content=json.dumps(tool_response, ensure_ascii=False),
+                    tool_call_id=tool_call_id
+                )
+            ]
+        }
         
         return Command(
             update=update
@@ -55,7 +63,7 @@ def get_qna(
         raise Exception(e)
     
 @tool
-def get_common_situation(
+def get_common_situation_tool(
     state: Annotated[SellState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
@@ -63,33 +71,39 @@ def get_common_situation(
     try:
         user_input = state["user_input"]
         documents = graph_function.retrieve_common_situation(user_input)
-        update = {}
+        tool_response: AgentToolResponse = {}
         
         contents = [
             {
                 "id": data["id"],
                 "content": data["content"],
                 "similarity": data["similarity"]
-            } for data in documents]
+            } for data in documents
+        ]
         
         print(f">>> Contents: {contents}")
         
-        response = (
-            f"Đây là các tài liệu liên quan: {contents}\n"
-            f"Đây là yêu cầu của người dùng: {user_input}\n"
-            "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
-            "sử dụng các tài liệu liên quan.\n"
-            "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
-            "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
-        )
-        
-        update["messages"] = [
-            ToolMessage
-            (
-                content=response,
-                tool_call_id=tool_call_id
+        tool_response = {
+            "status": "finish",
+            "content": (
+                f"Đây là các tài liệu liên quan: {contents}\n"
+                f"Đây là yêu cầu của người dùng: {user_input}\n"
+                "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
+                "sử dụng các tài liệu liên quan.\n"
+                "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
+                "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
             )
-        ]
+        }
+        
+        update = {
+            "messages": [
+                ToolMessage
+                (
+                    content=json.dumps(tool_response, ensure_ascii=False),
+                    tool_call_id=tool_call_id
+                )
+            ]
+        }
         
         return Command(
             update=update

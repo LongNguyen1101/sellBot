@@ -12,12 +12,17 @@ def remain_list(old, new):
     return old if len(new) == 0 else new
     
 def remain_dict(old: dict, new: dict):
-    return old if new.__len__() == 0 else new
+    return old if not new else new
+
+def remain_tasks(old: Optional[List[dict]], new: Optional[List[dict]]) -> List[dict]:
+    return old if new is None else new
 
 class SellState(AgentState):
     user_input: Annotated[str, remain_value]
     messages: Annotated[list, add_messages]
     next_node: Annotated[str, remain_value]
+    
+    tasks: Annotated[Optional[List[dict]], remain_tasks]
     
     customer_id: Annotated[Optional[int], remain_value]
     name: Annotated[Optional[str], remain_value]
@@ -35,6 +40,8 @@ def init_state() -> SellState:
         user_input="",
         messages=[],
         next_node="",
+        
+        tasks=None,
     
         customer_id=None,
         name=None,
@@ -45,5 +52,5 @@ def init_state() -> SellState:
         cart={},
         seen_products=[],
         
-        orders=[]
+        orders=[],
     )

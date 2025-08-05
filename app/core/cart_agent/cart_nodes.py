@@ -1,13 +1,15 @@
 from langgraph.types import  Command
+from app.core.utils.class_parser import AgentToolResponse
+from app.core.utils.helper_function import get_chat_his
 from app.core.state import SellState
 from langchain_core.messages import AIMessage
-from app.core.graph_function import GraphFunction
+from app.core.utils.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 from app.core.cart_agent.cart_tools import (
-    add_cart,
-    get_cart,
-    update_cart,
-    update_receiver_information_in_cart
+    add_cart_tool,
+    get_cart_tool,
+    change_quantity_cart_tool,
+    update_receiver_info_in_cart_tool
 )
 from app.core.cart_agent.cart_prompts import cart_agent_system_prompt
 from app.core.model import init_model
@@ -20,35 +22,50 @@ class CarttNodes:
         self.llm = init_model()
         self.create_cart_agent = create_react_agent(
             model=self.llm,
-            tools=[add_cart, get_cart, update_cart, update_receiver_information_in_cart],
+            tools=[add_cart_tool, get_cart_tool, change_quantity_cart_tool, update_receiver_info_in_cart_tool],
             prompt = cart_agent_system_prompt(),
             state_schema=SellState
         )
         
-    def cart_agent(self, state: SellState) -> Command[Literal["__end__"]]:
-        state["messages"] = state["messages"][-10:]
-        result = self.create_cart_agent.invoke(state)
+    def cart_agent(self, 
+                   state: SellState
+    ) -> Command[Literal["__end__", "supervisor"]]:
+        state["messages"] = get_chat_his(
+            state["messages"],
+            start_offset=-10
+        )
+        tasks = state["tasks"]
+        next_node = "__end__"
+        update = {}
         
-        update = {
-            "messages": [
-                AIMessage(content=result["messages"][-1].content, name="cart_agent")
-            ],
-        }
+        response = self.create_cart_agent.invoke(state)
+        parse_response = AgentToolResponse.model_validate_json(response["messages"][-1].content)
+        status = parse_response.status
+        content = parse_response.content
         
-        if result.get("cart", None):
-            update["cart"] = result["cart"]
+        if status == "asking":
+            next_node = "__end__"
+        elif status == "finish":
+            if len(tasks) > 0:
+                next_node = "supervisor"
+                content = None
+            else:
+                next_node = "__end__"
+        else:
+            next_node = "__end__"
+        
+        if content:
+            update["messages"] = [
+                AIMessage(content=content, name="cart_agent")
+            ]
+        update["next_node"] = next_node
             
-        if result.get("name", None):
-            update["name"] = result["name"]
-            
-        if result.get("phone_number", None):
-            update["phone_number"] = result["phone_number"]
-            
-        if result.get("address", None):
-            update["address"] = result["address"]
+        for key in ["cart", "name", "phone_number", "address"]:
+           if response.get(key, None) is not None:
+               update[key] = response[key]
         
         return Command(
             update=update,
-            goto="__end__"
+            goto=next_node
         )
     

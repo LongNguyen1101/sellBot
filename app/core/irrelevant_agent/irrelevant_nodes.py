@@ -2,24 +2,26 @@ from langgraph.types import Command
 from app.core.irrelevant_agent.irrelevant_prompts import irrelevant_agent_prompt
 from app.core.state import SellState
 from langchain_core.messages import AIMessage
-from app.core.graph_function import GraphFunction
-
+from app.core.utils.graph_function import GraphFunction
+from typing import Literal
 from app.core.model import init_model
+from app.core.utils.helper_function import get_chat_his
 
 class IrrelevantNodes:
     def __init__(self):
         self.graph_function = GraphFunction()
         self.llm = init_model()
         
-    def irrelevant_agent(self, state: SellState) -> Command:
+    def irrelevant_agent(self, 
+                         state: SellState
+    ) -> Command[Literal["__end__", "supervisor"]]:
+        chat_his = get_chat_his(
+            state["messages"],
+            start_offset=-10
+        )
         user_input = state["user_input"]
-        chat_his = [
-            {
-                "type": chat.type,
-                "content": chat.content
-            }
-            for chat in state["messages"][-10:]
-        ]
+        tasks = state["tasks"]
+        next_node = "__end__"
         
         messages = [
             {"role": "system", "content": irrelevant_agent_prompt()},
@@ -30,13 +32,17 @@ class IrrelevantNodes:
         ]
         
         response = self.llm.invoke(messages)
-        
-        next_node = "__end__"
         content = response.content
         
-        update = {}
-        update["messages"] = [AIMessage(content=content, name="irrelevant_agent")]
-        update["next_node"] = next_node
+        if len(tasks) > 0:
+            next_node = "supervisor"
+        else:
+            next_node = "__end__"
+        
+        update = {
+            "messages": [AIMessage(content=content, name="irrelevant_agent")],
+            "next_node": next_node
+        }
         
         return Command(
             update=update,
