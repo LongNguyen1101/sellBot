@@ -113,6 +113,10 @@ def split_and_rewrite_prompt() -> str:
         "thể hiểu được.\n"
         "- Cần xác định yêu cầu nào nên tách thành yêu cầu con hoặc không, không tách thành "
         "các yêu cầu con dư.\n"
+        "- Khi khách chọn một sản phẩm trong các sản phẩm đã xem thì chỉ đơn giản "
+        "tách thành 1 yêu cầu con là thêm sản phẩm đó vào giỏ hàng.\n"
+        "- Khi khách nói lên đơn thì chỉ tách thành 1 yêu cầu con là lên đơn, không tách thành "
+        "nhiều yêu cầu con.\n"
         
         "# Ví dụ:\n"
         """
@@ -164,6 +168,19 @@ def split_and_rewrite_prompt() -> str:
             {
                 "id": 1,
                 "sub_query": Cập nhật địa chỉ nhận hàng trong giỏ hàng là ở quận 7
+            }
+        ]
+        
+        STT: 5
+        Input: 
+        Yêu cầu của khách: Cái thứ 2 á
+        Sản phẩm khách muốn mua: Camera An Ninh WiFi TP-Link TAPO C225 và Camera An Ninh Ngoài Trời IMOU Cruiser Z 5MP 12X
+        Đơn hàng của khách: None
+        Output: 
+        [,
+            {
+                "id": 1,
+                "sub_query": Thêm sản phẩm Camera An Ninh Ngoài Trời IMOU Cruiser Z 5MP 12X vào giỏ hàng
             }
         ]
         """
