@@ -91,14 +91,17 @@ def add_cart_tool(
                 "Nếu không có thông tin số điện thoại của khách hàng thì hỏi khách để hỗ trợ tư vấn.\n"
                 "Nếu đã có số điện thoại của khách thì bỏ qua, không nói gì cả.\n"
             )
-
-        update["messages"] = [
-            ToolMessage
-            (
-                content=json.dumps(tool_response, ensure_ascii=False),
-                tool_call_id=tool_call_id
-            ),
-        ]
+        
+        update.update({
+            "messages": [
+                ToolMessage
+                (
+                    content=tool_response["content"],
+                    tool_call_id=tool_call_id
+                )
+            ],
+            "status": tool_response["status"]
+        })
 
         return Command(
             update=update

@@ -35,12 +35,12 @@ class CustomerServiceNodes:
         update = {}
         
         response = self.create_cart_agent.invoke(state)
-        parse_response = AgentToolResponse.model_validate_json(response["messages"][-1].content)
-        status = parse_response.status
-        content = parse_response.content
+        content = response["messages"][-1].content
+        status = response["status"]
         
         if status == "asking":
             next_node = "__end__"
+            tasks = []
         elif status == "finish":
             if len(tasks) > 0:
                 next_node = "supervisor"
@@ -49,10 +49,12 @@ class CustomerServiceNodes:
                 next_node = "__end__"
         else:
             next_node = "__end__"
+            tasks = []
         
         if content:
             update["messages"] = [AIMessage(content=content, name="customer_service_agent")]
         update["next_node"] = next_node
+        update["tasks"] = tasks
             
         for key in ["cart", "name", "phone_number", "address"]:
            if response.get(key, None) is not None:

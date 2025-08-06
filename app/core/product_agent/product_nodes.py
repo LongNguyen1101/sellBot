@@ -37,9 +37,8 @@ class ProductNodes:
         update = {}
         
         response = self.create_product_agent.invoke(state)
-        parse_response = AgentToolResponse.model_validate_json(response["messages"][-1].content)
-        status = parse_response.status
-        content = parse_response.content
+        content = response["messages"][-1].content
+        status = response["status"]
         
         if status == "asking":
             next_node = "__end__"
@@ -53,6 +52,7 @@ class ProductNodes:
                 next_node = "__end__"
         else:
             next_node = "__end__"
+            tasks = []
             
         if content:
             update["messages"] = [

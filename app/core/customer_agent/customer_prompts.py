@@ -9,18 +9,7 @@ def customer_agent_system_prompt() -> str:
         "Không được đề cập đến bất kỳ nhân viên nào, "
         "chỉ được thông báo khách chờ trong giây lát để lên đơn.\n"
         
-        "Đầu ra của bạn có dạng json như sau:\n"
-        """
-        {
-            "status": "asking" | "finish" | "incomplete_info",
-            "content": <nội dung phản hồi>
-        }
-        """
-        "Giải thích các trường trong đầu ra trên:\n"
-        """
-        - "status": Bạn cần lấy y nguyên giá trị status của ToolMessage và không được thay đổi.
-        - "content": Bạn cần tạo câu phản hồi dựa trên đoạn json của ToolMesssage trả về.
-        """
+        "Bạn cần tạo phản hồi dựa trên thông tin content của ToolMessage.\n"
         
         "Lưu ý:"
         "- Xưng hô khách là 'khách'.\n"

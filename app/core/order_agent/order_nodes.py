@@ -41,9 +41,8 @@ class OrderNodes:
         update = {}
         
         response = self.create_order_agent.invoke(state)
-        parse_response = AgentToolResponse.model_validate_json(response["messages"][-1].content)
-        status = parse_response.status
-        content = parse_response.content
+        content = response["messages"][-1].content
+        status = response["status"]
         
         if response.get("tasks", None):
             tasks.append(response["tasks"])
@@ -52,6 +51,7 @@ class OrderNodes:
         
         if status == "asking":
             next_node = "__end__"
+            tasks = []
         elif status == "finish":
             if len(tasks) > 0:
                 next_node = "supervisor"
@@ -60,12 +60,14 @@ class OrderNodes:
                 next_node = "__end__"
         else:
             next_node = "__end__"
+            tasks = []
         
         if content:
             update["messages"] = [
                 AIMessage(content=content, name="order_agent")
             ]
         update["next_node"] = next_node
+        update["tasks"] = tasks
             
         for key in ["orders", "cart", "name", "phone_number", "address", "customer_id"]:
            if response.get(key, None) is not None:

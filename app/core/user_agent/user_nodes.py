@@ -1,7 +1,7 @@
 from typing import Literal
 from langgraph.types import Command
 from app.core.state import SellState
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from app.core.model import init_model
 from app.core.user_agent.user_prompts import split_and_rewrite_prompt
 from app.core.utils.class_parser import SplitRequestOutput
@@ -23,6 +23,7 @@ class UserNodes:
         )
         
     def split_request_node(self, state: SellState) -> Command:
+        update = {}
         user_input = state["user_input"]
         chat_his = [
             {
@@ -40,19 +41,23 @@ class UserNodes:
             {"role": "human", "content": (
                 f"Yêu cầu của khách: {user_input}.\n"
                 f"Lịch sử chat: {chat_his}.\n"
-                f"Danh sách đơn hàng của khách: {orders}.\n"
-                f"Danh sách các sản phẩm khách muốn mua: {cart}.\n"
-                f"Danh sách các sản phẩm khách đã xem {seen_products}.\n"
+                f"Danh sách đơn hàng của khách (orders): {orders}.\n"
+                f"Danh sách các sản phẩm khách muốn mua (cart): {cart}.\n"
+                f"Danh sách các sản phẩm khách đã xem (seen_products): {seen_products}.\n"
             )}
         ]
         
         response = self.llm.with_structured_output(SplitRequestOutput).invoke(messages)
         print(f">>>> Tasks: {response["tasks"]}")
         
+        if len(response["tasks"]) > 0:
+            content = "Dạ khách vui lòng đợi em một chút để em xử lý ạ.\n"
+            update["messages"] = [AIMessage(content=content, name="split_request_node")]
+        
+        update["tasks"] = response["tasks"] 
+        
         return Command(
-            update={
-                "tasks": response["tasks"],
-            },
+            update=update,
             goto="supervisor"
         )
         

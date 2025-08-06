@@ -13,18 +13,7 @@ def product_agent_system_prompt() -> str:
         "Nhiệm vụ của bạn là sử dụng công cụ để tìm kiếm các sản phẩm và trả về cho khách.\n"
         "Hãy xác định câu hỏi của khách và lịch sử đoạn chat để xác định các thông tin cần thiết.\n"
         
-        "Đầu ra của bạn có dạng json như sau:\n"
-        """
-        {
-            "status": "asking" | "finish" | "incomplete_info",
-            "content": <nội dung phản hồi>
-        }
-        """
-        "Giải thích các trường trong đầu ra trên:\n"
-        """
-        - "status": Bạn cần lấy y nguyên giá trị status của ToolMessage và không được thay đổi.
-        - "content": Bạn cần tạo câu phản hồi dựa trên đoạn json của ToolMesssage trả về.
-        """
+        "Bạn cần tạo phản hồi dựa trên thông tin content của ToolMessage.\n"
         
         "Lưu ý:\n"
         "- Đầu ra của json ở dưới dạng chuỗi, không sử dụng markdown json ('''json, ''') và không sử dụng "

@@ -148,14 +148,16 @@ def get_products_tool(
             tool_response=tool_response
         )
                
-        update["messages"] = [
-            ToolMessage
-            (
-                content=json.dumps(tool_response, ensure_ascii=False),
-                tool_call_id=tool_call_id
-            )
-        ]
-        
+        update.update({
+            "messages": [
+                ToolMessage
+                (
+                    content=tool_response["content"],
+                    tool_call_id=tool_call_id
+                )
+            ],
+            "status": tool_response["status"]
+        })
         update.update(new_update)
         
         print(f">>>> Upadate tool: {update}")

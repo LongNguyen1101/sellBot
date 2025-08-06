@@ -49,10 +49,11 @@ def get_qna_tool(
             "messages": [
                 ToolMessage
                 (
-                    content=json.dumps(tool_response, ensure_ascii=False),
+                    content=tool_response["content"],
                     tool_call_id=tool_call_id
                 )
-            ]
+            ],
+            "status": tool_response["status"]
         }
         
         return Command(
@@ -99,10 +100,11 @@ def get_common_situation_tool(
             "messages": [
                 ToolMessage
                 (
-                    content=json.dumps(tool_response, ensure_ascii=False),
+                    content=tool_response["content"],
                     tool_call_id=tool_call_id
                 )
-            ]
+            ],
+            "status": tool_response["status"]
         }
         
         return Command(

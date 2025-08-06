@@ -117,11 +117,12 @@ def add_phone_name_address_tool(
             "messages": [
                 ToolMessage 
                 (
-                    content=json.dumps(tool_response, ensure_ascii=False),
+                    content=tool_response["content"],
                     tool_call_id=tool_call_id
                 )
             ],
-            "tasks": tasks
+            "tasks": tasks,
+            "status": tool_response["status"]
         })
 
         return Command(update=update)

@@ -23,6 +23,7 @@ class SellState(AgentState):
     next_node: Annotated[str, remain_value]
     
     tasks: Annotated[Optional[List[dict]], remain_tasks]
+    status: Annotated[str, remain_value]
     
     customer_id: Annotated[Optional[int], remain_value]
     name: Annotated[Optional[str], remain_value]
@@ -42,6 +43,7 @@ def init_state() -> SellState:
         next_node="",
         
         tasks=None,
+        status="",
     
         customer_id=None,
         name=None,

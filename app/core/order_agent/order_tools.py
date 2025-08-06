@@ -170,10 +170,11 @@ def create_order_tool(
         update["messages"] = [
             ToolMessage
             (
-                content=json.dumps(tool_response, ensure_ascii=False),
+                content=tool_response["content"],
                 tool_call_id=tool_call_id
             )
         ]
+        update["status"] = tool_response["status"]
         
         return Command(update=update)
         
@@ -251,10 +252,11 @@ def get_all_orders_tool(
         update["messages"] = [
             ToolMessage
             (
-                content=json.dumps(tool_response, ensure_ascii=False),
+                content=tool_response["content"],
                 tool_call_id=tool_call_id
             )
         ]
+        update["status"] = tool_response["status"]
         
         return Command(update=update)
         
@@ -323,10 +325,11 @@ def remove_item_from_order_tool(
         update["messages"] = [
             ToolMessage
             (
-                content=json.dumps(tool_response, ensure_ascii=False),
+                content=tool_response["content"],
                 tool_call_id=tool_call_id
             )
         ]
+        update["status"] = tool_response["status"]
         
         return Command(update=update)
         
@@ -409,10 +412,11 @@ def update_item_quantity_tool(
         update["messages"] = [
             ToolMessage
             (
-                content=json.dumps(tool_response, ensure_ascii=False),
+                content=tool_response["content"],
                 tool_call_id=tool_call_id
             )
         ]
+        update["status"] = tool_response["status"]
         
         return Command(update=update)
         
@@ -515,10 +519,11 @@ def update_receiver_info_tool(
         update["messages"] = [
             ToolMessage
             (
-                content=json.dumps(tool_response, ensure_ascii=False),
+                content=tool_response["content"],
                 tool_call_id=tool_call_id
             )
         ]
+        update["status"] = tool_response["status"]
         
         return Command(update=update)
         

@@ -4,6 +4,7 @@ from typing import Literal, TypedDict
 from langgraph.types import Command
 from app.core.model import init_model
 from app.core.utils.class_parser import Router
+from app.core.utils.helper_function import get_chat_his
 
 
 MEMBERS = (["product_agent", "cart_agent", "order_agent", "customer_agent",
@@ -22,28 +23,31 @@ class SupervisorNodes:
         tasks = state["tasks"]
         next_node = "__end__"
         
-        if tasks:
-            chat_his = [
-                {
-                    "type": chat.type,
-                    "content": chat.content
-                }
-                for chat in state["messages"][-10:-1]
-            ]
-            current_state = state.copy()
-            current_state.pop("messages", None)
-            current_state.pop("tasks", None)
-            user_input = state["user_input"]
+        if len(tasks) > 0:
+            chat_his = get_chat_his(
+                messages=state["messages"],
+                start_offset=-10,
+            )
+            
             current_task = tasks[0]["sub_query"]
             tasks.pop(0)
+            
+            customer_id = state["customer_id"]
+            cart = state["cart"]
+            seen_products = state["seen_products"]
+            orders = state["orders"]
+            
+            print(f">>>> Đang xử lý tasks: {current_task}")
 
             messages = [
                 {"role": "system", "content": supervisor_system_prompt(members=self.members)},
                 {"role": "human", "content": (
                     f"Yêu cầu hiện tại: {current_task}.\n"
-                    # f"Yêu cầu của khách: {user_input}.\n"
                     f"Lịch sử chat: {chat_his}\n"
-                    # f"Các thông tin thu thập được (state của chatbot): {current_state}"
+                    f"customer_id: {customer_id}\n"
+                    f"cart {cart}\n"
+                    f"seen_products: {seen_products}\n"
+                    f"orders: {orders}\n"
                 )}
             ]
 
