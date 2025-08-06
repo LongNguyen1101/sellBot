@@ -37,9 +37,10 @@ class CustomerNodes:
         content = response["messages"][-1].content
         status = response["status"]
         
-        if response.get("tasks", None) is not None:
-            tasks.append(response["tasks"])
+        if response.get("tasks", None):
+            tasks.extend(response["tasks"])
             update["tasks"] = tasks
+            print(f">>>> Tasks sau khi được cập nhật: {tasks}")
         
         if status == "asking":
             next_node = "__end__"

@@ -46,7 +46,7 @@ class OrderNodes:
         
         if response.get("tasks", None):
             if len(response["tasks"]) > 0:
-                tasks.append(response["tasks"])
+                tasks.extend(response["tasks"])
                 update["tasks"] = tasks
                 print(f">>>> Tasks sau khi được cập nhật: {tasks}")
         
