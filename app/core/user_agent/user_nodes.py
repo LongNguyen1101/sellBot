@@ -50,7 +50,7 @@ class UserNodes:
         response = self.llm.with_structured_output(SplitRequestOutput).invoke(messages)
         print(f">>>> Tasks: {response["tasks"]}")
         
-        if len(response["tasks"]) > 0:
+        if len(response["tasks"]) > 1:
             content = "Dạ khách vui lòng đợi em một chút để em xử lý ạ.\n"
             update["messages"] = [AIMessage(content=content, name="split_request_node")]
         
