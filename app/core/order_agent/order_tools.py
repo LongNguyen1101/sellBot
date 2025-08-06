@@ -105,8 +105,9 @@ def create_order_tool(
         if not receiver_phone_number or not receiver_name or not receiver_address:
             tool_response = {
                     "status": "incomplete_info",
-                    "content": ("Không có thông tin tên người nhận và địa chỉ "
-                                "người nhận, hỏi khách hàng cung cấp thông tin.\n"
+                    "content": (
+                        "Không có thông tin tên người nhận và địa chỉ "
+                        "người nhận, hỏi khách hàng cung cấp thông tin.\n"
                     )
                 }
         else:

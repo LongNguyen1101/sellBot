@@ -45,9 +45,10 @@ class OrderNodes:
         status = response["status"]
         
         if response.get("tasks", None):
-            tasks.append(response["tasks"])
-            update["tasks"] = tasks
-            print(f">>>> tasks: {tasks}")
+            if len(response["tasks"]) > 0:
+                tasks.append(response["tasks"])
+                update["tasks"] = tasks
+                print(f">>>> Tasks sau khi được cập nhật: {tasks}")
         
         if status == "asking":
             next_node = "__end__"
