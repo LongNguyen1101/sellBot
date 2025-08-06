@@ -51,6 +51,7 @@ class CarttNodes:
                 content = None
             else:
                 next_node = "__end__"
+                tasks = []
         else:
             next_node = "__end__"
             tasks = []
