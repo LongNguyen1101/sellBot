@@ -43,7 +43,7 @@ class SupervisorNodes:
                 {"role": "system", "content": supervisor_system_prompt(members=self.members)},
                 {"role": "human", "content": (
                     f"Yêu cầu hiện tại: {current_task}.\n"
-                    f"Lịch sử chat: {chat_his}\n"
+                    # f"Lịch sử chat: {chat_his}\n"
                     f"customer_id: {customer_id}\n"
                     f"cart {cart}\n"
                     f"seen_products: {seen_products}\n"

@@ -284,14 +284,19 @@ def update_receiver_info_in_cart_tool(
         
         if update_receiver:
             tool_response["content"] = ""
-            if name:
+            if name is not None:
                 tool_response["content"] += f"Đã cập nhật tên của người nhận: {name}\n"
             if phone_number is not None:
                 tool_response["content"] += f"Đã cập nhật số điện thoại của người nhận: {phone_number}\n"
             if address is not None:
-                tool_response["content"] += f"Đã câp địa chỉ của người nhận: {address}.\n"
+                tool_response["content"] += f"Đã cập nhật địa chỉ của người nhận: {address}.\n"
             
-            cart_info = get_cart(cart, name, phone_number, address)
+            cart_info = get_cart(
+                cart, 
+                name if name else state["name"],
+                phone_number if phone_number else state["phone_number"], 
+                address if address else state["address"],
+            )
             tool_response["status"] = "finish"
             tool_response["content"] += (
                 "Trả lại các sản phẩm cho khách, không được rút gọn, bỏ bớt hay tự bịa đặt thông tin:\n"
@@ -304,15 +309,16 @@ def update_receiver_info_in_cart_tool(
             }
         
         update = {
-            "name": name,
-            "phone_number": phone_number,
-            "address": address,
+            "name": name if name else state["name"],
+            "phone_number": phone_number if phone_number else state["phone_number"],
+            "address": address if address else state["address"],
             "messages": [
                 ToolMessage(
-                    content=json.dumps(tool_response, ensure_ascii=False),
+                    content=tool_response["content"],
                     tool_call_id=tool_call_id
                 )
-            ]
+            ],
+            "status": tool_response["status"]
         }
         
         return Command(

@@ -75,7 +75,7 @@ def supervisor_system_prompt(members: List[str]) -> str:
         
         "Bạn sẽ được cung cấp các thông tin sau:\n"
         "- Yêu cầu hiện tại dành cho bạn.\n"
-        "- Lịch sử cuộc trò chuyện.\n"
+        # "- Lịch sử cuộc trò chuyện.\n"
         "- customer_id: id của khách hàng, nếu không có tức là khách hàng chưa cung cấp số điện thoại.\n"
         "- cart: giỏ hàng của khách, nếu không có tức là khách chưa chọn sản phẩm nào.\n"
         "- seen_products: các sản phẩm mà khách vừa xem.\n"

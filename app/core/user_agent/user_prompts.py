@@ -198,6 +198,8 @@ def split_and_rewrite_prompt() -> str:
             - Nếu **orders** chưa có dữ liệu -> tạo 2 sub_query:  
                 1) lấy các đơn hàng hiện tại
                 2) cập nhật <yêu cầu của khách> trong đơn hàng
+        - Nếu khách muốn sửa giỏ hàng (đổi tên, số điện thoại, địa chỉ hoặc thêm/xóa sản phẩm):
+            - Nếu **cart** đã có dữ liệu -> bắt buộc tạo 1 sub_query: cập nhật đơn hàng với <yêu cầu của khách> trong giỏ hàng.  
         """
 
         

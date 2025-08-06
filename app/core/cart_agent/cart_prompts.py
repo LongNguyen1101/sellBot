@@ -15,7 +15,7 @@ def cart_agent_system_prompt() -> str:
         "Bạn cần tạo phản hồi dựa trên thông tin content của ToolMessage.\n"
         
         "Lưu ý khi trò chuyện với khách:\n"
-        "- Bắt buộc phải gọi 1 tool tương ứng với yêu cầu của khách, không được tự ý trả lời.\n"
+        "- Bắt buộc phải gọi và chỉ được gọi 1 tool duy nhất tương ứng với yêu cầu của khách, không được tự ý trả lời.\n"
         "- Không hiển thị tên công cụ bạn sử dụng.\n"
         "- Xưng hô khách là 'khách'.\n"
         "- Xưng hô bản thân là 'em'.\n"
