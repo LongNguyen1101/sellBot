@@ -40,9 +40,39 @@ async def chat(request: ChatRequest):
         media_type="text/event-stream"
     )
 
+# async def stream_messages(events: Any, thread_id: str):
+#     last_printed = None
+#     closed = False
+
+#     try:
+#         async for data in events:
+#             for key, value in data.items():
+#                 messages = value.get("messages", [])
+#                 if not messages:
+#                     continue
+
+#                 last_msg = messages[-1]
+#                 if isinstance(last_msg, AIMessage):
+#                     content = last_msg.content.strip()
+#                     if content and content != last_printed:
+#                         last_printed = content
+#                         msg = {"content": content}
+#                         yield f"data: {json.dumps(msg, ensure_ascii=False)}\n\n"
+#                         await asyncio.sleep(0.01)
+#     except GeneratorExit:
+#         closed = True
+#         raise
+#     except Exception as e:
+#         error_dict = {"error": str(e), "thread_id": thread_id}
+#         yield f"data: {json.dumps(error_dict, ensure_ascii=False)}\n\n"
+#     finally:
+#         if not closed:
+#             yield "data: [DONE]\n\n"
+            
 async def stream_messages(events: Any, thread_id: str):
     last_printed = None
-    
+    closed = False
+
     try:
         for data in events:
             for key, value in data.items():
@@ -58,8 +88,14 @@ async def stream_messages(events: Any, thread_id: str):
                             msg = {"content": content}
                             yield f"data: {json.dumps(msg, ensure_ascii=False)}\n\n"
                             await asyncio.sleep(0.01)  # slight delay for smoother streaming
+    except GeneratorExit:
+        closed = True
+        raise
     except Exception as e:
         error_dict = {"error": str(e), "thread_id": thread_id}
         yield f"data: {json.dumps(error_dict, ensure_ascii=False)}\n\n"
     finally:
-        yield "data: [DONE]\n\n"
+        if not closed:
+            yield "data: [DONE]\n\n"
+
+
