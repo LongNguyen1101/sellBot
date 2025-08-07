@@ -23,7 +23,6 @@ def _check_customer(chat_id: int,
 ) -> Tuple[ToolMessage, dict]:
     try:
         update = {}
-        
         customer = graph_function.get_customer_by_chat_id(chat_id)
         
         if customer:
@@ -116,39 +115,35 @@ def create_order_tool(
             if cart_items:
                 print(f">>>> Thông tin giỏ hàng: {cart_items}")
 
-                new_order, note = graph_function.get_or_create_order(
+                new_order = graph_function.create_order(
                     customer_id,
                     receiver_name=receiver_name,
                     receiver_phone_number=receiver_phone_number,
                     receiver_address=receiver_address,
                     shipping_fee=shipping_fee
                 )
-                
-                tool_response["content"] = ""
-                tool_response["content"] += f"{note}\n"
-
-                created_order_items, note = graph_function.add_cart_item_to_order(cart_items, new_order.order_id)
+                created_order_items = graph_function.add_cart_item_to_order(cart_items, new_order.order_id)
 
                 if created_order_items is None:
-                    tool_response["status"] = "error"
-                    tool_response["content"] += "Lỗi không thể thêm các sản phẩm vào đơn hàng, vui lòng thử lại"
+                    tool_response = {
+                        "status": "error",
+                        "content": "Lỗi không thể thêm các sản phẩm vào đơn hàng, vui lòng thử lại"
+                    }
                 else:
                     order_info, order_items = graph_function.get_order_detail(new_order.order_id)
                     order_detail = return_order(order_info, order_items, new_order.order_id)
 
-                    tool_response["status"] = "finish"
-                    tool_response["content"] += (
-                        "Tạo đơn hàng thành công.\n"
-                        "Đây là thông tin về việc gộp đơn khách đang đặt với đơn khách đã đặt trước đó nhưng chưa vận chuyễn hay không:\n"
-                        f"{note}\n"
-                        "- Nếu thông tin trên đề cập sản phẩm được thêm mới thì bỏ qua, không thông báo cho khách.\n"
-                        "- Nếu thông tin trên đề cập sản phẩm đã có sẵn trong đơn hàng, gộp đơn thì thông báo cho khách.\n"
-                        "Trả về đơn hàng y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
-                        f"{order_detail}\n"
-                        "Lưu ý không được bỏ bớt thông tin, liệt kê chi tiết cho khách.\n"
-                        "Nói khách đơn hàng sẽ được vận chuyển trong 3-5 ngày, khách để ý điện thoại "
-                        "để nhân viên giao hàng gọi.\n"
-                    )
+                    tool_response = {
+                        "status": "finish",
+                        "content": (
+                            "Tạo đơn hàng thành công.\n"
+                            "Trả về đơn hàng y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
+                            f"{order_detail}\n"
+                            "Lưu ý không được bỏ bớt thông tin, liệt kê chi tiết cho khách.\n"
+                            "Nói khách đơn hàng sẽ được vận chuyển trong 3-5 ngày, khách để ý điện thoại "
+                            "để nhân viên giao hàng gọi.\n"
+                        )
+                    }
 
                     # Save to state
                     update["orders"] = [_extract_order(
@@ -192,7 +187,6 @@ def get_all_orders_tool(
     try:
         update = {}
         tool_response: AgentToolResponse = {}
-        
         customer_id = state["customer_id"]
         
         if not customer_id:
@@ -274,7 +268,6 @@ def remove_item_from_order_tool(
     try:
         tool_response: AgentToolResponse = {}
         update = {}
-        content = ""
         print(f">>>> ID of item: {item_id}")
         
         if not order_id:

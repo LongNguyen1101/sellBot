@@ -144,7 +144,9 @@ class PublicCRUD:
         
         return dict(results._mapping) # chuyển kết quả thành list of dict
     
-    def search_products_by_product_ids(self, product_ids: List[int]) -> List[dict]:
+    def search_products_by_product_ids(self, 
+                                       product_ids: List[int]
+    ) -> Optional[List[dict]]:
         results = (
             self.db.query(
                 ProductDescription.product_id,

@@ -38,7 +38,7 @@ class CustomerNodes:
         status = response["status"]
         
         if response.get("tasks", None):
-            tasks.extend(response["tasks"])
+            tasks = response["tasks"]
             update["tasks"] = tasks
             print(f">>>> Tasks sau khi được cập nhật: {tasks}")
         

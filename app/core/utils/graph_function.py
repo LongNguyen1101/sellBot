@@ -6,7 +6,7 @@ from app.services.crud_public import PublicCRUD
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, date, time as dtime, timedelta
 from app.core.state import SellState
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple, Dict
 import json
 from dotenv import load_dotenv
 import os
@@ -48,22 +48,29 @@ class GraphFunction:
     def get_products_by_keyword(self, 
                                 keyword: str, 
                                 public_crud: PublicCRUD = next(get_public_crud())
-    ) -> List[dict]:
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         try:
             products = public_crud.search_products_by_keyword(keyword=keyword)
-            extract_products = [
-                {
+            extract_products = []
+            show_products = []
+            
+            for product in products:
+                extract_products.append({
                     "product_id": product["product_id"],
                     "sku": product["sku"],
                     "product_name": product["product_name"],
                     "variance_description": product["variance_description"],
+                    "price": product["price"]
+                })
+                
+                show_products.append({
+                    "product_name": product["product_name"],
+                    "variance_description": product["variance_description"],
                     "brief_description": product["brief_description"],
                     "price": product["price"]
-                }
-                for product in products
-            ]
+                })
             
-            return extract_products
+            return extract_products, show_products
         except SQLAlchemyError as e:
             public_crud.db.rollback()
             raise
@@ -230,55 +237,25 @@ class GraphFunction:
         
         order_items: List[OrderItem] = []
         try:
-            note = ""
             for item_data in cart_items.values():
-                product_id_from_cart = item_data["Mã sản phẩm"]
-                sku_from_cart = item_data["Mã phân loại"]
-                quantity_to_add = item_data["Số lượng"]
-                product_name = item_data["Tên sản phẩm"]
-                sku_name = item_data["Tên phân loại"] if item_data["Tên phân loại"] != '' else "Không có"
-                
-                existing_order_item = public_crud.get_items_by_order_id_sku_product_id(order_id,
-                                                                                       product_id_from_cart,
-                                                                                       sku_from_cart)
-
-                if existing_order_item:
-                    new_quantity = existing_order_item.quantity + quantity_to_add
-                    updated_item = public_crud.update_order_item_quantity(existing_order_item.id,
-                                                                          new_quantity)
-                    
-                    note += (
-                        f"Sản phẩm: {product_name} (với tên phân loại: {sku_name}) "
-                        "đã có trong đơn hàng bạn đặt trước đó. Tăng số lượng của sản phẩm này trong đơn hàng thành "
-                        f"{new_quantity}.\n\n"
-                    )
-                    
-                    if not updated_item:
-                        raise SQLAlchemyError("Cannot update quantity of order item")
-                
-                else:
-                    order_item = OrderItem(
-                        order_id = order_id,
-                        product_id = item_data["Mã sản phẩm"],
-                        sku = item_data["Mã phân loại"],
-                        quantity = item_data["Số lượng"],
-                        price = item_data["Giá sản phẩm"],
-                        subtotal = item_data["Giá cuối cùng"]
-                    )
-                    order_items.append(order_item)
-                    
-                    note += (
-                        f"Sản phẩm: {product_name} (với tên phân loại: {sku_name}) "
-                        "chưa có trong giỏ hàng. Thêm sản phẩm này vào trong giỏ hàng có sẵn."
-                    )
+                order_item = OrderItem(
+                    order_id = order_id,
+                    product_id = item_data["Mã sản phẩm"],
+                    sku = item_data["Mã phân loại"],
+                    quantity = item_data["Số lượng"],
+                    price = item_data["Giá sản phẩm"],
+                    subtotal = item_data["Giá cuối cùng"]
+                )
+                order_items.append(order_item)
                 
             created_order_items = public_crud.create_order_items_bulk(order_items)
+            
             updated_order = public_crud.update_order(
                 order_id=order_id,
                 status="created"
             )
                     
-            return created_order_items, note
+            return created_order_items
         except SQLAlchemyError as e:
             public_crud.db.rollback()
             raise
@@ -416,34 +393,22 @@ class GraphFunction:
         finally:
             public_crud.db.close()
             
-    def get_or_create_order(self,
-                            customer_id: int,
-                            receiver_name: str,
-                            receiver_phone_number: str,
-                            receiver_address: str,
-                            shipping_fee: int,
-                            public_crud: PublicCRUD = next(get_public_crud())
+    def create_order(self,
+                     customer_id: int,
+                     receiver_name: str,
+                     receiver_phone_number: str,
+                     receiver_address: str,
+                     shipping_fee: int,
+                     public_crud: PublicCRUD = next(get_public_crud())
     ):
         try:
-            unshipped_order = public_crud.get_unshipped_order(customer_id=customer_id)
-            
-            if not unshipped_order:
-                return public_crud.create_order(
-                    customer_id=customer_id,
-                    receiver_name=receiver_name,
-                    receiver_phone_number=receiver_phone_number,
-                    receiver_address=receiver_address,
-                    shipping_fee=shipping_fee
-                ), "Khách không có đơn nào chưa gửi, không gộp đơn, không thông báo cho khách."
-                
-            return public_crud.update_order(
-                order_id=unshipped_order.order_id,
+            return public_crud.create_order(
+                customer_id=customer_id,
                 receiver_name=receiver_name,
                 receiver_phone_number=receiver_phone_number,
-                receiver_address=receiver_address
-            ), "Khách có đơn chưa gửi, gộp đơn, thông báo cho khách."
-            
-                
+                receiver_address=receiver_address,
+                shipping_fee=shipping_fee
+            )
         except SQLAlchemyError as e:
             public_crud.db.rollback()
             raise
@@ -512,7 +477,7 @@ class GraphFunction:
                                     match_count: int = 5,
                                     number_of_products: int = 10,
                                     public_crud: PublicCRUD = next(get_public_crud())
-    ) -> Optional[List[dict]]:
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
         try:
             product_id_list = []
             product_raw = self.retrieve_product_descriptions(user_input, match_count, public_crud)
@@ -527,8 +492,28 @@ class GraphFunction:
                     
             
             # query by ids
-            products = public_crud.search_products_by_product_ids(product_id_list)
-            return products[:number_of_products]
+            products = public_crud.search_products_by_product_ids(product_id_list)[:number_of_products]
+            show_products = []
+            extract_products = []
+            
+            if products:
+                for product in products:
+                    extract_products.append({
+                        "product_id": product["product_id"],
+                        "sku": product["sku"],
+                        "product_name": product["product_name"],
+                        "variance_description": product["variance_description"],
+                        "price": product["price"]
+                    })
+
+                    show_products.append({
+                        "product_name": product["product_name"],
+                        "variance_description": product["variance_description"],
+                        "brief_description": product["brief_description"],
+                        "price": product["price"]
+                    })
+            
+            return extract_products, show_products
 
         except SQLAlchemyError as e:
             public_crud.db.rollback()

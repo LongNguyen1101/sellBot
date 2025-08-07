@@ -21,6 +21,7 @@ class SupervisorNodes:
                          state: SellState
     ) -> Command:
         tasks = state["tasks"]
+        current_task = None
         next_node = "__end__"
         
         if len(tasks) > 0:
@@ -58,7 +59,8 @@ class SupervisorNodes:
         return Command(
             update={
                 "next_node": next_node,
-                "tasks": tasks
+                "tasks": tasks,
+                "current_task": current_task
             },
             goto=next_node
         )

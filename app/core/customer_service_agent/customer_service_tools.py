@@ -20,7 +20,8 @@ def get_qna_tool(
     """Use this tool if user has a question about product such as how to use."""
     try:
         user_input = state["user_input"]
-        documents = graph_function.retrieve_qna(user_input)
+        current_task = state["current_task"]
+        documents = graph_function.retrieve_qna(current_task)
         tool_response: AgentToolResponse = {}
         
         contents = [
@@ -38,6 +39,7 @@ def get_qna_tool(
             "content": (
                 f"Đây là các tài liệu liên quan: {contents}\n"
                 f"Đây là yêu cầu của người dùng: {user_input}\n"
+                f"Yêu cầu hiện tại của hệ thống: {current_task}.\n"
                 "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
                 "sử dụng các tài liệu liên quan.\n"
                 "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
@@ -71,6 +73,7 @@ def get_common_situation_tool(
     """Use this tool if user has problems with products or product is malfuctioning."""
     try:
         user_input = state["user_input"]
+        current_task = state["current_task"]
         documents = graph_function.retrieve_common_situation(user_input)
         tool_response: AgentToolResponse = {}
         
@@ -88,7 +91,8 @@ def get_common_situation_tool(
             "status": "finish",
             "content": (
                 f"Đây là các tài liệu liên quan: {contents}\n"
-                f"Đây là yêu cầu của người dùng: {user_input}\n"
+                f"Đây là yêu cầu của người dùng: {user_input}.\n"
+                f"Yêu cầu hiện tại của hệ thống: {current_task}.\n"
                 "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
                 "sử dụng các tài liệu liên quan.\n"
                 "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."

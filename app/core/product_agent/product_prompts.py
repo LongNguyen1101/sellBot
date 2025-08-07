@@ -5,6 +5,9 @@ def product_agent_system_prompt() -> str:
         "Bạn được cung cấp thông tin trạng thái của chatbot bao gồm:\n"
         "- user_input: Yêu cầu của khách.\n"
         "- messages: lịch sử chat của khách và chatbot.\n"
+        "Bạn cần dựa vào các thông tin sau để biết được gọi tool nào:\n"
+        "- current_tasks: Công việc hiện tại của bạn.\n"
+        "- messages: lịch sử chat của khách và chatbot.\n"
         
         "Bạn được cung cấp các công cụ (tools) sau:\n"
         "- get_products_tool: Đây là công cụ bạn sử dụng để lấy các sản phẩm trong CSDL của "

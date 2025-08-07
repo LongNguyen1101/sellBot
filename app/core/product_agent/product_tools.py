@@ -19,7 +19,7 @@ def _get_products(keyword: str,
 ) -> Tuple[AgentToolResponse, List[dict]]:
     try:
         tool_response: AgentToolResponse = {}
-        products_found = graph_function.get_products_by_keyword(keyword)[:5]
+        products_found, show_products = graph_function.get_products_by_keyword(keyword)[:5]
         seen_products = products_found
         products_quantity = len(products_found)
         
@@ -30,7 +30,7 @@ def _get_products(keyword: str,
                 "status": "finish",
                 "content": (
                     "Thông báo tìm thấy một sản phẩm phù hợp với khách:\n"
-                    f"{products_found}.\n"
+                    f"{show_products}.\n"
                 )
             }
             
@@ -41,7 +41,7 @@ def _get_products(keyword: str,
                 "status": "asking",
                 "content": (
                     f"Thông báo tìm thấy nhiều sản phẩm phù hợp với khách, tổng cộng có {products_quantity} sản phẩm tìm được:\n"
-                    f"{products_found}.\n"
+                    f"{show_products}.\n"
                     "Hỏi khách muốn mua sản phẩm nào.\n"
                 )
             }
@@ -49,14 +49,14 @@ def _get_products(keyword: str,
         elif products_quantity == 0:
             print(">>>> Sử dụng embedding")
             
-            alternate_products = graph_function.get_product_embedding_info(user_input, match_count=5)
+            alternate_products, show_products = graph_function.get_product_embedding_info(user_input, match_count=5)
             
             if alternate_products:
                 tool_response = {
                     "status": "asking",
                     "content": (
                         "Đây là các sản phẩm, dựa vào yêu cầu của khách để chọn ra sản phẩm phù hợp nhất.\n"
-                        f"{alternate_products}\n"
+                        f"{show_products}\n"
                         "Đây là các sản phẩm tương tự, và hỏi khách có muốn không.\n"
                     )
                 }
@@ -70,8 +70,6 @@ def _get_products(keyword: str,
                         "phù hợp với yêu cầu của khách.\n"
                     )
                 }
-                
-                seen_products = alternate_products
                 
         return tool_response, seen_products
     except Exception as e:

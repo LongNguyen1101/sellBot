@@ -23,6 +23,7 @@ class SellState(AgentState):
     next_node: Annotated[str, remain_value]
     
     tasks: Annotated[Optional[List[dict]], remain_tasks]
+    current_task: Annotated[str, remain_value]
     status: Annotated[str, remain_value]
     
     customer_id: Annotated[Optional[int], remain_value]
@@ -32,7 +33,7 @@ class SellState(AgentState):
     chat_id: Annotated[Optional[str], remain_value]
     
     cart: Annotated[Optional[dict], remain_dict]
-    seen_products: Annotated[List[dict], remain_list]
+    seen_products: Annotated[List[dict], merge_lists]
     
     orders: Annotated[list, remain_list]
 
@@ -43,6 +44,7 @@ def init_state() -> SellState:
         next_node="",
         
         tasks=None,
+        current_task=None,
         status="",
     
         customer_id=None,

@@ -1,3 +1,4 @@
+from asyncio import current_task
 import json
 from langchain_core.tools import tool, InjectedToolCallId
 from app.core.cart_agent.cart_prompts import update_cart_prompt, choose_product_prompt
@@ -28,11 +29,12 @@ def add_cart_tool(
 ) -> Command:
     """Use this tool to add product into cart"""
     try:
-        seen_products = state["seen_products"]
-        user_input = state["user_input"]
-        cart = state["cart"]
         update = {}
         tool_response: AgentToolResponse = {}
+        
+        seen_products = state["seen_products"]
+        current_task = state["current_task"]
+        cart = state["cart"]
         phone_number = state["phone_number"]
         name = state["name"]
         address = state["address"]
@@ -50,7 +52,7 @@ def add_cart_tool(
                 {"role": "human", "content": (
                     f"Danh sách các sản phẩm khách đã xem: {seen_products}\n"
                     f"Lịch sử chat: {chat_histories}\n"
-                    f"Tin nhắn của khách: {user_input}\n"
+                    f"Yêu cầu hiện tại: {current_task}.\n"
                     "Bạn hãy xác định sản phẩm mà khách chọn."
                 )}
             ]
@@ -132,35 +134,15 @@ def get_cart_tool(
                     f"{cart_item}"
 
                     "Lưu ý:\n"
+                    "- Xem các thông tin người nhận như tên, địa chỉ, số điện thoại "
+                    "nếu thiếu thông tin nào thì hỏi khách cung cấp thông tin đó, "
+                    "nếu đã đủ cả 3 thông tin thì hỏi khách muốn lên đơn luôn không.\n"
                     "- Cần trả lời chính xác cho khách về thông tin trên.\n"
                     "- Nếu có danh sách các sản phẩm thì trả về chính xác các sản phẩm đó.\n"
                     "- Nếu không có sản phẩm nào thì thông báo khách chưa chọn sản phẩm nào.\n"
                     "- Tuyệt đối không được tự đưa ra sản phẩm.\n"
                 )
             }
-
-            if phone_number:
-                tool_response["content"] += "Đã có số điện thoại của khách.\n"
-                unshipped_order = graph_function.get_unshipped_order(customer_id)
-
-                if unshipped_order:
-                    order_info, order_items = graph_function.get_order_detail(unshipped_order.order_id)
-                    order_detail = return_order(order_info, order_items, unshipped_order.order_id)
-                    tool_response["content"] += (
-                        "Khách có đơn chưa vận chuyển:\n"
-                        f"{order_detail}."
-                        "Hiển thị đầy đủ đơn hàng khách đã đặt, thông báo nếu khách muốn lên đơn "
-                        "thì sản phẩm của khách sẽ được gộp vào đơn hàng này của khách.\n"
-                    )
-
-                tool_response["content"] += (
-                    "Hỏi khách kiểm tra lại lại các sản phẩm, nếu đúng thì lên đơn.\n"
-                )
-            else:
-                tool_response["content"] += (
-                    "Chưa có số điện thoại của khách.\n"
-                    "Hỏi khách số điện thoại để dễ dàng tư vấn cho khách.\n"
-                )
         else:
             seen_products = state["seen_products"]
             tool_response = {
@@ -179,10 +161,11 @@ def get_cart_tool(
                 "messages": [
                     ToolMessage
                     (
-                        content=json.dumps(tool_response, ensure_ascii=False),
+                        content=tool_response["content"],
                         tool_call_id=tool_call_id
                     )
-                ]
+                ],
+                "status": tool_response["status"]
             }
         )
     except Exception as e:
@@ -195,7 +178,7 @@ def change_quantity_cart_tool(
 ) -> Command:
     """Use this tool to change quantity of a specify product in cart"""
     cart = state["cart"]
-    user_input = state["user_input"]
+    current_task = state["current_task"]
     chat_histories = state["messages"]
     name = state["name"]
     phone_number = state["phone_number"]
@@ -205,7 +188,7 @@ def change_quantity_cart_tool(
         {"role": "system", "content": update_cart_prompt()},
         {"role": "human", "content": (
             f"Đây là cart: {cart}.\n"
-            f"Đây là yêu cầu của người dùng: {user_input}.\n"
+            f"Yêu cầu hiện tại: {current_task}.\n"
             f"Đây là lịch sử chat: {chat_histories}."
         )}
     ]
@@ -250,11 +233,13 @@ def change_quantity_cart_tool(
     update = {
         "cart": cart,
         "messages": [
-            ToolMessage(
-                content=json.dumps(tool_response, ensure_ascii=False),
+            ToolMessage
+            (
+                content=tool_response["content"],
                 tool_call_id=tool_call_id
             )
-        ]
+        ],
+        "status": tool_response["status"]
     }
    
     return Command(
