@@ -11,17 +11,14 @@ from app.core.utils.helper_function import get_cart, add_cart, return_order
 from app.core.utils.class_parser import (
     AgentToolResponse,
     ProductChosen,
-    AddCart,
     UpdateCart,
-    RemoveProduct
 )
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 
-
-
 @tool
 def add_cart_tool(
+    
     state: Annotated[SellState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId]
     

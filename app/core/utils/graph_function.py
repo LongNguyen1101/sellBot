@@ -322,7 +322,11 @@ class GraphFunction:
                                     number_of_products: int = 10,
     ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
         product_id_list = []
-        product_raw = self.retrieve_product_descriptions(user_input, match_count, public_crud)
+        product_raw = self.retrieve_product_descriptions(
+            public_crud=public_crud,
+            user_input=user_input, 
+            match_count=match_count,
+        )
 
         print(f">>>> Product raw: {product_raw}")
         # get the list of product_id

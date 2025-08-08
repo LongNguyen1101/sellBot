@@ -46,9 +46,9 @@ def _get_products(
         elif products_quantity == 0:
             print(">>>> Sử dụng embedding")
             alternate_products, show_products = graph_function.get_product_embedding_info(
-                user_input,
+                public_crud=public_crud,
+                user_input=user_input,
                 match_count=5, 
-                public_crud=public_crud
             )
             
             if alternate_products:
