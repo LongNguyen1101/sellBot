@@ -1,12 +1,8 @@
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.orm import sessionmaker, declarative_base, Session, scoped_session
 from dotenv import load_dotenv
 from contextlib import contextmanager
-
-
-# from app.services.crud_public import PublicCRUD
-
 
 load_dotenv(override=True)
 
@@ -30,22 +26,29 @@ engine = create_engine(
 # )
 
 # Tạo session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionFactory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Session = scoped_session(SessionFactory)
 
 # Base class cho các model
 Base = declarative_base()
         
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        
+# @contextmanager
+# def session_scope():
+#     """Provide a transactional scope around a series of operations."""
+#     session = SessionLocal()
+#     try:
+#         yield session
+#         session.commit()
+#     except Exception:
+#         session.rollback()
+#         raise
+#     finally:
+#         session.close()
+
 @contextmanager
 def session_scope():
     """Provide a transactional scope around a series of operations."""
-    session = SessionLocal()
+    session = Session()  # đây là scoped_session, thread-safe
     try:
         yield session
         session.commit()
@@ -54,6 +57,7 @@ def session_scope():
         raise
     finally:
         session.close()
+        Session.remove()  # cleanup session của thread này
 
 # (Tùy chọn) Hàm kiểm tra kết nối
 def test_connection():

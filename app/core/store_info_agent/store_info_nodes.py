@@ -13,7 +13,7 @@ class StoreInfoNodes:
         
     def store_info_agent(self, 
                          state: SellState
-    ) -> Command[Literal["__end__", "supervisor"]]:
+    ) -> Command[Literal["__end__", "router_node"]]:
         chat_his = get_chat_his(
             state["messages"],
             start_offset=-10
@@ -34,7 +34,7 @@ class StoreInfoNodes:
         content = response.content
         
         if len(tasks) > 0:
-            next_node = "supervisor"
+            next_node = "router_node"
         else:
             next_node = "__end__"
         

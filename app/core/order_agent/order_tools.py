@@ -17,8 +17,6 @@ from app.models.normal_models import Order
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 
-
-
 def _check_customer(
     chat_id: int, 
     tool_response: ToolMessage,
@@ -30,19 +28,19 @@ def _check_customer(
     
     if customer:
         log = (
-            ">>>> Tìm thấy thông tin của khách:\n",
-            f"Tên: {customer.name}\n"
-            f"Số điện thoại: {customer.phone_number}\n"
-            f"Địa chỉ: {customer.address}\n"
-            f"ID khách: {customer.customer_id}.\n"
+            ">>>> Tìm thấy thông tin của khách:",
+            f"Tên: {customer["name"]}. "
+            f"Số điện thoại: {customer["phone_number"]}. "
+            f"Địa chỉ: {customer["address"]}. "
+            f"ID khách: {customer["customer_id"]}."
         )
         
         print(log)
         update.update({
-            "name": customer.name,
-            "phone_number":customer.phone_number,
-            "address":customer.address,
-            "customer_id":customer.customer_id
+            "name": customer["name"],
+            "phone_number":customer["phone_number"],
+            "address":customer["address"],
+            "customer_id":customer["customer_id"]
         })
         
         tool_response["content"] += (

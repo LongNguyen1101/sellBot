@@ -12,17 +12,17 @@ class UserNodes:
         
     def user_input_node(self, 
                         state: SellState
-    ) -> Command[Literal["split_request_node"]]:
+    ) -> Command[Literal["planner_node"]]:
         user_input = state["user_input"]
         
         return Command(
             update={
                 "messages": [HumanMessage(content=user_input, name="user_input_node")],
             },
-            goto="split_request_node"
+            goto="planner_node"
         )
         
-    def split_request_node(self, state: SellState) -> Command:
+    def planner_node(self, state: SellState) -> Command:
         update = {}
         user_input = state["user_input"]
         chat_his = [
@@ -58,7 +58,7 @@ class UserNodes:
         
         return Command(
             update=update,
-            goto="supervisor"
+            goto="router_node"
         )
         
         

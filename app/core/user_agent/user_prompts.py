@@ -62,8 +62,8 @@ def split_and_rewrite_prompt() -> str:
         "Bạn là quản lý cấp cao của cửa hàng bán đồ điện từ thông minh.\n"
         
         "# Ngữ cảnh:\n"
-        "Chatbot được xây dựng theo kiến trúc multi-agent và 1 supervisor có vai trò "
-        "định tuyến. Đầu ra của bạn sẽ lần lượt đi vào supervisor để định tuyến đến "
+        "Chatbot được xây dựng theo kiến trúc multi-agent và 1 router_node có vai trò "
+        "định tuyến. Đầu ra của bạn sẽ lần lượt đi vào router_node để định tuyến đến "
         "các agent phù hợp. Chatbot bao gồm các agent và nhiệm vụ của các agent tương "
         "ứng như sau:\n"
         
@@ -179,8 +179,11 @@ def split_and_rewrite_prompt() -> str:
         "- Các sub_query sau khi tách phải liên quan đến các agent và nằm trong phạm vi xử "
         "lý của agent đó.\n"
         
-        "- Các sub_query cần ngắn gọn, xúc tích, nhưng vẫn mang đủ ý nghĩa để supervisor có "
+        "- Các sub_query cần ngắn gọn, xúc tích, nhưng vẫn mang đủ ý nghĩa để các agent có "
         "thể hiểu được.\n"
+        
+        "- Các agent cần được lựa chọn chính xác dựa trên công việc của mỗi "
+        "agent, việc này quan trọng để router_node có thể định tuyến đúng.\n"
         
         "- Cần xác định query nào nên tách thành sub_query hoặc không, không tách thành "
         "các sub_query dư.\n"

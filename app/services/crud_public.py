@@ -106,26 +106,28 @@ class PublicCRUD:
             self.db.commit()
             return []
     
-    def search_products_by_keyword(self, keyword: str) -> List[dict]:
-        results = (
-            self.db.query(
-                ProductDescription.product_id,
-                Pricing.sku,
-                ProductDescription.product_name,
-                Pricing.variance_description,
-                ProductDescription.brief_description,
-                Pricing.price,
-                Pricing.inventory
-            )
-            .join(Pricing, ProductDescription.product_id == Pricing.product_id)
-            .filter(
-                ProductDescription.product_name.ilike(f"%{keyword}%"),
-                Pricing.price != 0
-            )
-            .all()
+    def search_products_by_keyword(self, keyword: str, limit: int = 5) -> List[dict]:
+        sql = text(
+            """
+            SELECT 
+                pd.product_id,
+                p.sku,
+                pd.product_name,
+                p.variance_description,
+                pd.brief_description,
+                p.price,
+                p.inventory
+            FROM product_description pd
+            JOIN pricing p ON pd.product_id = p.product_id
+            WHERE pd.product_name ILIKE :pattern
+              AND p.price != 0
+            LIMIT :limit
+            """
         )
-
-        return [dict(row._mapping) for row in results]  # chuyển kết quả thành list of dict
+        params = {"pattern": f"%{keyword}%", "limit": limit}
+        
+        result = self.db.execute(sql, params)
+        return result.mappings().all()
     
     def get_product_by_product_id_and_sku(self, product_id: int, sku: str) -> dict:
         results = (
@@ -194,8 +196,23 @@ class PublicCRUD:
     def get_customer_by_phone_number(self, phone_number: str) -> Optional[Customer]:
         return self.db.query(Customer).filter(Customer.phone_number == phone_number).first()
     
-    def get_customer_by_chat_id(self, chat_id: str) -> Optional[Customer]:
-        return self.db.query(Customer).filter(Customer.chat_id == chat_id).first()
+    def get_customer_by_chat_id(self, chat_id: str) -> Optional[dict]:
+        sql = text(
+            """
+            SELECT customer_id, name, phone_number, address
+            FROM customer
+            WHERE chat_id = :chat_id
+            LIMIT 1
+            """
+        )
+        params = {"chat_id": chat_id}
+        
+        result = self.db.execute(sql, params)
+        row = result.mappings().first()
+        # if row:
+        #     return Customer(**row)
+        # return None
+        return row
 
     def get_all_customers(self) -> List[Customer]:
         return self.db.query(Customer).all()

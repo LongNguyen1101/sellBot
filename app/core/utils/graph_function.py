@@ -30,10 +30,14 @@ class GraphFunction:
             return []
         
     def get_products_by_keyword(self, 
-                                keyword: str, 
-                                public_crud: PublicCRUD
+                                keyword: str,
+                                public_crud: PublicCRUD,
+                                limit: int = 5
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-        products = public_crud.search_products_by_keyword(keyword=keyword)
+        products = public_crud.search_products_by_keyword(
+            keyword=keyword, 
+            limit=limit
+        )
         extract_products = []
         show_products = []
         
@@ -350,7 +354,7 @@ class GraphFunction:
         return extract_products, show_products
 
         
-    def get_customer_by_chat_id(self, chat_id: str, public_crud: PublicCRUD) -> Optional[Customer]:
+    def get_customer_by_chat_id(self, chat_id: str, public_crud: PublicCRUD) -> Optional[dict]:
         return public_crud.get_customer_by_chat_id(chat_id)
             
     def get_order_by_id(self, order_id: int, public_crud: PublicCRUD) -> Optional[Order]:

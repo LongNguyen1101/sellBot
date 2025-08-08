@@ -26,7 +26,7 @@ class CarttNodes:
         
     def cart_agent(self, 
                    state: SellState
-    ) -> Command[Literal["__end__", "supervisor"]]:
+    ) -> Command[Literal["__end__", "router_node"]]:
         state["messages"] = get_chat_his(
             state["messages"],
             start_offset=-10
@@ -44,7 +44,7 @@ class CarttNodes:
             tasks = []
         elif status == "finish":
             if len(tasks) > 0:
-                next_node = "supervisor"
+                next_node = "router_node"
                 content = None
             else:
                 next_node = "__end__"
