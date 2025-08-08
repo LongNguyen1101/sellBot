@@ -15,14 +15,12 @@ from app.core.utils.class_parser import AgentToolResponse
 
 class ProductNodes:
     def __init__(self):
-        self.graph_function = GraphFunction()
-        
         self.llm = init_model()
         self.create_product_agent = create_react_agent(
             model=self.llm,
             tools=[get_products_tool],
             prompt = product_agent_system_prompt(),
-            state_schema=SellState,
+            state_schema=SellState, 
         )
         
     def product_agent(self, 

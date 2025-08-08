@@ -12,8 +12,6 @@ from typing import Literal
 
 class CustomerNodes:
     def __init__(self):
-        self.graph_function = GraphFunction()
-        
         self.llm = init_model()
         self.create_customer_agent = create_react_agent(
             model=self.llm,

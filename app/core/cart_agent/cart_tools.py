@@ -17,8 +17,9 @@ from app.core.utils.class_parser import (
     UpdateCart,
     RemoveProduct
 )
+from app.db.database import session_scope
+from app.services.crud_public import PublicCRUD
 
-graph_function = GraphFunction()
 llm = init_model()
 
 @tool
@@ -34,7 +35,7 @@ def add_cart_tool(
         
         seen_products = state["seen_products"]
         current_task = state["current_task"]
-        cart = state["cart"]
+        cart = state["cart"].copy() # Work on a copy
         phone_number = state["phone_number"]
         name = state["name"]
         address = state["address"]
@@ -59,7 +60,7 @@ def add_cart_tool(
             
             response = llm.with_structured_output(ProductChosen).invoke(messages)
             
-            if response["product_id"] is None:
+            if response.get("product_id") is None:
                 tool_response["status"] = "asking"
                 tool_response["content"] = (
                     "Không xác định được sản phẩm khách muốn hoặc không có sản phẩm nào đúng ý khách, "
@@ -85,11 +86,11 @@ def add_cart_tool(
             tool_response["status"] = "asking"
             tool_response["content"] = (
                 "Đây là số điện thoại của khách:\n"
-                f"{phone_number if phone_number else "Không có số điện thoại"}.\n"
+                f"{phone_number if phone_number else 'Không có số điện thoại'}.\n"
                 "Hãy thông báo và xin lỗi với khách là khách chưa xem sản phẩm nào nên không biết khách muốn "
                 "mua sản phẩm gì.\n"
                 "Thông báo cửa hàng bán các đồ điện tử thông minh trong nhà như "
-                "ổ cắm, công tắc, khóa cửa, đèn, rèm thông minh,...\n"
+                "ổ cắm, công tắc, khóa cửa, đèn, rèm thông minh,..."
                 "Nếu không có thông tin số điện thoại của khách hàng thì hỏi khách để hỗ trợ tư vấn.\n"
                 "Nếu đã có số điện thoại của khách thì bỏ qua, không nói gì cả.\n"
             )
@@ -122,10 +123,9 @@ def get_cart_tool(
         name = state["name"]
         phone_number = state["phone_number"]
         address = state["address"]
-        customer_id = state["customer_id"]
         tool_response: AgentToolResponse = {}
         
-        if cart:
+        if cart and "place_holder" not in cart:
             cart_item = get_cart(cart, name, phone_number, address)
             tool_response = {
                 "status": "finish",
@@ -150,7 +150,7 @@ def get_cart_tool(
                 "content": (
                     "Giỏ hàng của khách đang trống.\n"
                     "Đây là thông tin các sản phẩm khách mới xem:\n"
-                    f"{seen_products if seen_products else "Không có sản phẩm nào"}.\n"
+                    f"{seen_products if seen_products else 'Không có sản phẩm nào'}.\n"
                     "Dựa vào thông tin trên hoặc lịch sử chat để hỏi khách có muốn mua gì không."
                 )
             }
@@ -177,7 +177,7 @@ def change_quantity_cart_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to change quantity of a specify product in cart"""
-    cart = state["cart"]
+    cart = state["cart"].copy()
     current_task = state["current_task"]
     chat_histories = state["messages"]
     name = state["name"]
@@ -193,12 +193,12 @@ def change_quantity_cart_tool(
         )}
     ]
     result = llm.with_structured_output(UpdateCart).invoke(msg)
-    key = result["key"]
-    update_quantity = result["update_quantity"]
+    key = result.get("key")
+    update_quantity = result.get("update_quantity")
 
     tool_response: AgentToolResponse = {}
     
-    if result["key"] is None:
+    if key is None:
         tool_response = {
             "status": "incomplete_info",
             "content": "Không xác định được sản phẩm khách muốn thay đổi, hỏi lại khách."
@@ -211,11 +211,12 @@ def change_quantity_cart_tool(
     elif update_quantity >= 0:
         print(f">>>> Update quantity: {update_quantity}")
         if update_quantity == 0:
-            del cart[key]
+            cart.pop(key, None) # Use pop with default to avoid KeyError
             print(f">>>> Đã xoá sản phẩm {key}")
         elif update_quantity > 0:
-            cart[key]["Số lượng"] = int(update_quantity)
-            cart[key]["Giá cuối cùng"] = int(update_quantity) * cart[key]["Giá sản phẩm"]
+            if key in cart:
+                cart[key]["Số lượng"] = int(update_quantity)
+                cart[key]["Giá cuối cùng"] = int(update_quantity) * cart[key]["Giá sản phẩm"]
         
         cart_info = get_cart(cart, name, phone_number, address)
         tool_response = {
@@ -256,59 +257,64 @@ def update_receiver_info_in_cart_tool(
 ) -> Command:
     """Use this tool to update name or phone number or address of receiver in cart"""
     try:
-        customer_id = state["customer_id"]
-        cart = state["cart"]
-        tool_response: AgentToolResponse = {}
-        
-        update_receiver = graph_function.update_customer_info(
-            customer_id=customer_id,
-            name=name,
-            phone_number=phone_number,
-            address=address
-        )
-        
-        if update_receiver:
-            tool_response["content"] = ""
-            if name is not None:
-                tool_response["content"] += f"Đã cập nhật tên của người nhận: {name}\n"
-            if phone_number is not None:
-                tool_response["content"] += f"Đã cập nhật số điện thoại của người nhận: {phone_number}\n"
-            if address is not None:
-                tool_response["content"] += f"Đã cập nhật địa chỉ của người nhận: {address}.\n"
+        with session_scope() as db_session:
+            public_crud = PublicCRUD(db_session)
+            graph_function = GraphFunction()
             
-            cart_info = get_cart(
-                cart, 
-                name if name else state["name"],
-                phone_number if phone_number else state["phone_number"], 
-                address if address else state["address"],
+            customer_id = state["customer_id"]
+            cart = state["cart"]
+            tool_response: AgentToolResponse = {}
+            
+            update_receiver = graph_function.update_customer_info(
+                public_crud=public_crud,
+                customer_id=customer_id,
+                name=name,
+                phone_number=phone_number,
+                address=address
             )
-            tool_response["status"] = "finish"
-            tool_response["content"] += (
-                "Trả lại các sản phẩm cho khách, không được rút gọn, bỏ bớt hay tự bịa đặt thông tin:\n"
-                f"{cart_info}"
-            )
-        else:
-            tool_response = {
-                "status": "error",
-                "content": "Đã có lỗi xảy ra trong quá trình cập nhật thông tin khách hàng. Xin lỗi khách và xin quý khách thử lại."
-            }
-        
-        update = {
-            "name": name if name else state["name"],
-            "phone_number": phone_number if phone_number else state["phone_number"],
-            "address": address if address else state["address"],
-            "messages": [
-                ToolMessage(
-                    content=tool_response["content"],
-                    tool_call_id=tool_call_id
+            
+            if update_receiver:
+                tool_response["content"] = ""
+                if name is not None:
+                    tool_response["content"] += f"Đã cập nhật tên của người nhận: {name}\n"
+                if phone_number is not None:
+                    tool_response["content"] += f"Đã cập nhật số điện thoại của người nhận: {phone_number}\n"
+                if address is not None:
+                    tool_response["content"] += f"Đã cập nhật địa chỉ của người nhận: {address}.\n"
+                
+                cart_info = get_cart(
+                    cart, 
+                    name if name else state["name"],
+                    phone_number if phone_number else state["phone_number"], 
+                    address if address else state["address"],
                 )
-            ],
-            "status": tool_response["status"]
-        }
-        
-        return Command(
-            update=update
-        )
-        
+                tool_response["status"] = "finish"
+                tool_response["content"] += (
+                    "Trả lại các sản phẩm cho khách, không được rút gọn, bỏ bớt hay tự bịa đặt thông tin:\n"
+                    f"{cart_info}"
+                )
+            else:
+                tool_response = {
+                    "status": "error",
+                    "content": "Đã có lỗi xảy ra trong quá trình cập nhật thông tin khách hàng. Xin lỗi khách và xin quý khách thử lại."
+                }
+            
+            update = {
+                "name": name if name else state["name"],
+                "phone_number": phone_number if phone_number else state["phone_number"],
+                "address": address if address else state["address"],
+                "messages": [
+                    ToolMessage(
+                        content=tool_response["content"],
+                        tool_call_id=tool_call_id
+                    )
+                ],
+                "status": tool_response["status"]
+            }
+            
+            return Command(
+                update=update
+            )
+            
     except Exception as e:
         raise Exception(e)

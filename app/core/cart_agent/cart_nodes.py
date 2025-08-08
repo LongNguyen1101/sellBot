@@ -17,8 +17,6 @@ from typing import Literal
 
 class CarttNodes:
     def __init__(self):
-        self.graph_function = GraphFunction()
-        
         self.llm = init_model()
         self.create_cart_agent = create_react_agent(
             model=self.llm,

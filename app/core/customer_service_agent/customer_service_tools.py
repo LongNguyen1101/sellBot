@@ -8,8 +8,9 @@ from langgraph.types import Command
 from app.core.state import SellState
 from langchain_core.tools import tool, InjectedToolCallId
 from langchain_core.messages import ToolMessage
+from app.db.database import session_scope
+from app.services.crud_public import PublicCRUD
 
-graph_function = GraphFunction()
 llm = init_model()
 
 @tool
@@ -19,48 +20,51 @@ def get_qna_tool(
 ) -> Command:
     """Use this tool if user has a question about product such as how to use."""
     try:
-        user_input = state["user_input"]
-        current_task = state["current_task"]
-        documents = graph_function.retrieve_qna(current_task)
-        tool_response: AgentToolResponse = {}
-        
-        contents = [
-            {
-                "id": data["id"],
-                "content": data["content"],
-                "similarity": data["similarity"]
-            } for data in documents
-        ]
-        
-        print(f">>> Contents: {contents}")
-        
-        tool_response = {
-            "status": "finish",
-            "content": (
-                f"Đây là các tài liệu liên quan: {contents}\n"
-                f"Đây là yêu cầu của người dùng: {user_input}\n"
-                f"Yêu cầu hiện tại của hệ thống: {current_task}.\n"
-                "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
-                "sử dụng các tài liệu liên quan.\n"
-                "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
-                "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
-            )
-        }
-        
-        update = {
-            "messages": [
-                ToolMessage
-                (
-                    content=tool_response["content"],
-                    tool_call_id=tool_call_id
+        with session_scope() as db_session:
+            public_crud = PublicCRUD(db_session)
+            graph_function = GraphFunction()
+            user_input = state["user_input"]
+            current_task = state["current_task"]
+            documents = graph_function.retrieve_qna(public_crud=public_crud, user_input=current_task)
+            tool_response: AgentToolResponse = {}
+            
+            contents = [
+                {
+                    "id": data["id"],
+                    "content": data["content"],
+                    "similarity": data["similarity"]
+                } for data in documents
+            ]
+            
+            print(f">>> Contents: {contents}")
+            
+            tool_response = {
+                "status": "finish",
+                "content": (
+                    f"Đây là các tài liệu liên quan: {contents}\n"
+                    f"Đây là yêu cầu của người dùng: {user_input}\n"
+                    f"Yêu cầu hiện tại của hệ thống: {current_task}.\n"
+                    "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
+                    "sử dụng các tài liệu liên quan.\n"
+                    "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
+                    "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
                 )
-            ],
-            "status": tool_response["status"]
-        }
-        
-        return Command(
-            update=update
-        )
+            }
+            
+            update = {
+                "messages": [
+                    ToolMessage
+                    (
+                        content=tool_response["content"],
+                        tool_call_id=tool_call_id
+                    )
+                ],
+                "status": tool_response["status"]
+            }
+            
+            return Command(
+                update=update
+            )
         
     except Exception as e:
         raise Exception(e)
@@ -72,48 +76,54 @@ def get_common_situation_tool(
 ) -> Command:
     """Use this tool if user has problems with products or product is malfuctioning."""
     try:
-        user_input = state["user_input"]
-        current_task = state["current_task"]
-        documents = graph_function.retrieve_common_situation(user_input)
-        tool_response: AgentToolResponse = {}
-        
-        contents = [
-            {
-                "id": data["id"],
-                "content": data["content"],
-                "similarity": data["similarity"]
-            } for data in documents
-        ]
-        
-        print(f">>> Contents: {contents}")
-        
-        tool_response = {
-            "status": "finish",
-            "content": (
-                f"Đây là các tài liệu liên quan: {contents}\n"
-                f"Đây là yêu cầu của người dùng: {user_input}.\n"
-                f"Yêu cầu hiện tại của hệ thống: {current_task}.\n"
-                "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
-                "sử dụng các tài liệu liên quan.\n"
-                "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
-                "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
+        with session_scope() as db_session:
+            public_crud = PublicCRUD(db_session)
+            graph_function = GraphFunction()
+            user_input = state["user_input"]
+            current_task = state["current_task"]
+            documents = graph_function.retrieve_common_situation(
+                public_crud=public_crud, 
+                user_input=user_input
             )
-        }
-        
-        update = {
-            "messages": [
-                ToolMessage
-                (
-                    content=tool_response["content"],
-                    tool_call_id=tool_call_id
+            tool_response: AgentToolResponse = {}
+            
+            contents = [
+                {
+                    "id": data["id"],
+                    "content": data["content"],
+                    "similarity": data["similarity"]
+                } for data in documents
+            ]
+            
+            print(f">>> Contents: {contents}")
+            
+            tool_response = {
+                "status": "finish",
+                "content": (
+                    f"Đây là các tài liệu liên quan: {contents}\n"
+                    f"Đây là yêu cầu của người dùng: {user_input}.\n"
+                    f"Yêu cầu hiện tại của hệ thống: {current_task}.\n"
+                    "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
+                    "sử dụng các tài liệu liên quan.\n"
+                    "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
+                    "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
                 )
-            ],
-            "status": tool_response["status"]
-        }
-        
-        return Command(
-            update=update
-        )
+            }
+            
+            update = {
+                "messages": [
+                    ToolMessage
+                    (
+                        content=tool_response["content"],
+                        tool_call_id=tool_call_id
+                    )
+                ],
+                "status": tool_response["status"]
+            }
+            
+            return Command(
+                update=update
+            )
         
     except Exception as e:
         raise Exception(e)

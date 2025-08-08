@@ -13,8 +13,6 @@ from app.core.utils.helper_function import get_chat_his
 
 class CustomerServiceNodes:
     def __init__(self):
-        self.graph_function = GraphFunction()
-        
         self.llm = init_model()
         self.create_customer_service_agent = create_react_agent(
             model=self.llm,

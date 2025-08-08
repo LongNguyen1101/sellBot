@@ -19,7 +19,6 @@ from app.core.utils.helper_function import get_chat_his
 
 class OrderNodes:
     def __init__(self):
-        self.graph_function = GraphFunction()
         self.llm = init_model()
         self.create_order_agent = create_react_agent(
             model=self.llm,

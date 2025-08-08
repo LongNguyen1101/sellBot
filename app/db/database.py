@@ -1,8 +1,11 @@
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from dotenv import load_dotenv
-from sqlalchemy.pool import NullPool
+from contextlib import contextmanager
+
+
+# from app.services.crud_public import PublicCRUD
 
 
 load_dotenv(override=True)
@@ -11,34 +14,46 @@ load_dotenv(override=True)
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 # Tạo engine cho SQLAlchemy
-# engine = create_engine(
-#     DATABASE_URL, 
-#     echo=False,
-#     pool_size=10,
-#     max_overflow=2,
-#     pool_recycle=300,
-#     pool_pre_ping=True,
-#     pool_use_lifo=True
-# )
-
 engine = create_engine(
-    DATABASE_URL,
-    poolclass=NullPool,
+    DATABASE_URL, 
+    echo=False,
+    pool_size=20,
+    max_overflow=10,
+    pool_recycle=300,
+    pool_pre_ping=True,
+    pool_use_lifo=True
 )
+
+# engine = create_engine(
+#     DATABASE_URL,
+#     poolclass=NullPool,
+# )
 
 # Tạo session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class cho các model
 Base = declarative_base()
-
-# Hàm để lấy database session cho FastAPI dependency injection
+        
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+        
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
+    session = SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 # (Tùy chọn) Hàm kiểm tra kết nối
 def test_connection():
