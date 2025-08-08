@@ -1,8 +1,7 @@
 from app.core.supervisor_agent.supervisor_prompts import supervisor_system_prompt
 from app.core.state import SellState
-from typing import Literal, TypedDict
 from langgraph.types import Command
-from app.core.model import init_model
+from app.core.model import llm
 from app.core.utils.class_parser import Router
 from app.core.utils.helper_function import get_chat_his
 
@@ -15,7 +14,7 @@ class SupervisorNodes:
     def __init__(self):
         self.members = MEMBERS
         self.options = OPTIONS
-        self.llm = init_model()
+        self.llm = llm
 
     def supervisor_agent(self, 
                          state: SellState

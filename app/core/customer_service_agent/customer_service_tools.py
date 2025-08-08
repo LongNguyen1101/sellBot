@@ -1,7 +1,6 @@
 import json
 from app.core.utils.class_parser import AgentToolResponse
-from app.core.utils.graph_function import GraphFunction
-from app.core.model import init_model
+from app.core.utils.graph_function import graph_function
 from typing import Annotated
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
@@ -11,7 +10,7 @@ from langchain_core.messages import ToolMessage
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 
-llm = init_model()
+
 
 @tool
 def get_qna_tool(
@@ -22,7 +21,6 @@ def get_qna_tool(
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
-            graph_function = GraphFunction()
             user_input = state["user_input"]
             current_task = state["current_task"]
             documents = graph_function.retrieve_qna(public_crud=public_crud, user_input=current_task)
@@ -78,7 +76,6 @@ def get_common_situation_tool(
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
-            graph_function = GraphFunction()
             user_input = state["user_input"]
             current_task = state["current_task"]
             documents = graph_function.retrieve_common_situation(

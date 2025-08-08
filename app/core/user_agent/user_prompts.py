@@ -152,6 +152,7 @@ def split_and_rewrite_prompt() -> str:
         """
         {
             "id": Số nguyên (bắt đầu từ 1)
+            "agent": Tên của agent bạn cần trả về
             "sub_query": sub_query được tách ra dựa vào query ban đầu của khách hàng.
         }
         """
@@ -211,7 +212,8 @@ def split_and_rewrite_prompt() -> str:
         [
             {
                 "id": 1,
-                "sub_query": Tìm sản phẩm camera an ninh.
+                "agent": "product_agent",
+                "sub_query": "Tìm sản phẩm camera an ninh".
             }
         ]
         
@@ -221,10 +223,12 @@ def split_and_rewrite_prompt() -> str:
         [
             {
                 "id": 1,
+                "agent": "product_agent",
                 "sub_query": Tìm sản phẩm Đèn Ốp Trần Aqara T1M Symphony Ceiling Light Zigbee
             },
             {
                 "id": 2,
+                "agent": "cart_agent",
                 "sub_query": Thêm Đèn Ốp Trần Aqara T1M Symphony Ceiling Light Zigbee vào trong giỏ hàng
             }
         ]
@@ -238,6 +242,7 @@ def split_and_rewrite_prompt() -> str:
         [
             {
                 "id": 1,
+                "agent": "cart_agent",
                 "sub_query": Thêm sản phẩm Camera An Ninh Ngoài Trời IMOU Cruiser Z 5MP 12X vào giỏ hàng
             }
         ]
@@ -264,10 +269,12 @@ def split_and_rewrite_prompt() -> str:
         [
             {
                 "id": 1,
+                "agent": "cart_agent",
                 "sub_query": "Thêm 1 sản phẩm Camera An Ninh Ngoài Trời IMOU Cruiser Z 5MP 12X trong giỏ hàng"
             },
             {
                 "id": 2,
+                "agent": "cart_agent",
                 "sub_query": "Sửa lại địa chỉ nhận hàng là 456 Đà Lạt"
             }
         ]

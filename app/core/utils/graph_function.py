@@ -1,16 +1,11 @@
-from sqlalchemy.orm import Session
-from app.core.model import init_model
-from app.db.database import session_scope
 from app.models.normal_models import Customer, Order, OrderItem
 from app.services.crud_public import PublicCRUD
-from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime, date, time as dtime, timedelta
 from app.core.state import SellState
 from typing import Any, List, Optional, Tuple, Dict
-import json
 from dotenv import load_dotenv
-import os
 from langchain_openai import OpenAIEmbeddings
+import json
+import os
 import re
 
 load_dotenv()
@@ -18,9 +13,6 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 class GraphFunction:
-    def __init__(self):
-        self.llm = init_model()
-        
     def extract_product_name(self, user_input: str) -> List[str]:
         result = self.chain.extract_product_name().invoke(user_input)
         data = result.content.replace("```json\n", "").replace("\n```", "").replace("\n", "")
@@ -423,3 +415,5 @@ class GraphFunction:
                     return False
             return True 
         return False
+
+graph_function = GraphFunction()

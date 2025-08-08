@@ -6,16 +6,15 @@ from langchain_core.messages import AIMessage
 from app.core.utils.class_parser import AgentToolResponse
 from app.core.utils.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
-from app.core.model import init_model
+from app.core.model import llm_agent
 from typing import Literal
 
 from app.core.utils.helper_function import get_chat_his
 
 class CustomerServiceNodes:
     def __init__(self):
-        self.llm = init_model()
         self.create_customer_service_agent = create_react_agent(
-            model=self.llm,
+            model=llm_agent,
             tools=[get_qna_tool, get_common_situation_tool],
             prompt = customer_service_system_prompt(),
             state_schema=SellState

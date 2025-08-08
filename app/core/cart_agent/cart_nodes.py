@@ -12,14 +12,13 @@ from app.core.cart_agent.cart_tools import (
     update_receiver_info_in_cart_tool
 )
 from app.core.cart_agent.cart_prompts import cart_agent_system_prompt
-from app.core.model import init_model
+from app.core.model import llm_agent
 from typing import Literal
 
 class CarttNodes:
     def __init__(self):
-        self.llm = init_model()
         self.create_cart_agent = create_react_agent(
-            model=self.llm,
+            model=llm_agent,
             tools=[add_cart_tool, get_cart_tool, change_quantity_cart_tool, update_receiver_info_in_cart_tool],
             prompt = cart_agent_system_prompt(),
             state_schema=SellState

@@ -1,8 +1,6 @@
 import json
 from langchain_core.tools import tool, InjectedToolCallId
-from pydantic import BaseModel
-from app.core.utils.graph_function import GraphFunction
-from app.core.model import init_model
+from app.core.utils.graph_function import graph_function
 from app.core.state import SellState
 from typing import Annotated, TypedDict, Optional, Literal, Tuple, List
 from langgraph.prebuilt import InjectedState
@@ -12,12 +10,11 @@ from app.core.utils.class_parser import AgentToolResponse
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 
-llm = init_model()
+
 
 def _get_products(
     keyword: str,
     user_input: str,
-    graph_function: GraphFunction,
     public_crud: PublicCRUD
 ) -> Tuple[AgentToolResponse, List[dict]]:
     tool_response: AgentToolResponse = {}
@@ -51,7 +48,7 @@ def _get_products(
     elif products_quantity == 0:
         print(">>>> Sử dụng embedding")
         alternate_products, show_products = graph_function.get_product_embedding_info(
-            user_input, 
+            user_input,
             match_count=5, 
             public_crud=public_crud
         )
@@ -81,7 +78,6 @@ def _check_customer(
     customer_id: Optional[int], 
     chat_id: int, 
     tool_response: AgentToolResponse,
-    graph_function: GraphFunction,
     public_crud: PublicCRUD
 ) -> Tuple[AgentToolResponse, dict]:
     update = {}
@@ -132,13 +128,11 @@ def get_products_tool(
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
-            graph_function = GraphFunction()
             update = {}
             
             tool_response, seen_products = _get_products(
                 keyword=keyword,
                 user_input=state["user_input"],
-                graph_function=graph_function,
                 public_crud=public_crud
             )
             
@@ -148,7 +142,6 @@ def get_products_tool(
                 customer_id=state["customer_id"],
                 chat_id=state["chat_id"],
                 tool_response=tool_response,
-                graph_function=graph_function,
                 public_crud=public_crud
             )
                    

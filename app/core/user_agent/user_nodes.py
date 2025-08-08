@@ -2,13 +2,13 @@ from typing import Literal
 from langgraph.types import Command
 from app.core.state import SellState
 from langchain_core.messages import HumanMessage, AIMessage
-from app.core.model import init_model
+from app.core.model import llm
 from app.core.user_agent.user_prompts import split_and_rewrite_prompt
 from app.core.utils.class_parser import SplitRequestOutput
 
 class UserNodes:
     def __init__(self):
-        self.llm = init_model()
+        self.llm = llm
         
     def user_input_node(self, 
                         state: SellState

@@ -1,16 +1,15 @@
 from langgraph.types import Command
 from app.core.state import SellState
 from langchain_core.messages import AIMessage
-from app.core.utils.graph_function import GraphFunction
+from app.core.utils.graph_function import graph_function
 from typing import Literal
-from app.core.model import init_model
+from app.core.model import llm_agent
 from app.core.store_info_agent.store_info_prompts import store_info_agent_prompt
 from app.core.utils.helper_function import get_chat_his
 
 class StoreInfoNodes:
     def __init__(self):
-        self.graph_function = GraphFunction()
-        self.llm = init_model()
+        self.llm = llm_agent
         
     def store_info_agent(self, 
                          state: SellState

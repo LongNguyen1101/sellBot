@@ -1,9 +1,8 @@
 import json
 from langchain_core.tools import tool, InjectedToolCallId
-from sqlalchemy import Subquery
 from app.core.utils.class_parser import AgentToolResponse, SubQuery
-from app.core.utils.graph_function import GraphFunction
-from app.core.model import init_model
+from app.core.utils.graph_function import graph_function
+from app.core.model import llm
 from app.core.state import SellState
 from typing import Annotated, Optional
 from langgraph.prebuilt import InjectedState
@@ -13,7 +12,7 @@ from app.core.utils.helper_function import get_cart
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 
-llm = init_model()
+
     
 @tool
 def add_phone_name_address_tool(
@@ -27,7 +26,6 @@ def add_phone_name_address_tool(
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
-            graph_function = GraphFunction()
             tool_response: AgentToolResponse = {}
             
             chat_id = state["chat_id"]

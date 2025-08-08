@@ -10,18 +10,15 @@ from app.core.order_agent.order_tools import (
 )
 from app.core.state import SellState
 from langchain_core.messages import AIMessage
-from app.core.utils.class_parser import AgentToolResponse
-from app.core.utils.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 
-from app.core.model import init_model
+from app.core.model import llm_agent
 from app.core.utils.helper_function import get_chat_his
 
 class OrderNodes:
     def __init__(self):
-        self.llm = init_model()
         self.create_order_agent = create_react_agent(
-            model=self.llm,
+            model=llm_agent,
             tools=([create_order_tool, get_all_orders_tool, update_item_quantity_tool, 
                     remove_item_from_order_tool, update_receiver_info_tool]),
             prompt = order_agent_system_prompt(),

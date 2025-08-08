@@ -1,9 +1,7 @@
-from asyncio import current_task
-import json
 from langchain_core.tools import tool, InjectedToolCallId
 from app.core.cart_agent.cart_prompts import update_cart_prompt, choose_product_prompt
-from app.core.utils.graph_function import GraphFunction
-from app.core.model import init_model
+from app.core.utils.graph_function import graph_function
+from app.core.model import llm
 from app.core.state import SellState
 from typing import Annotated, List, Literal, Optional, TypedDict
 from langgraph.prebuilt import InjectedState
@@ -20,7 +18,7 @@ from app.core.utils.class_parser import (
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 
-llm = init_model()
+
 
 @tool
 def add_cart_tool(
@@ -259,7 +257,6 @@ def update_receiver_info_in_cart_tool(
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
-            graph_function = GraphFunction()
             
             customer_id = state["customer_id"]
             cart = state["cart"]

@@ -2,15 +2,14 @@ from langgraph.types import Command
 from app.core.irrelevant_agent.irrelevant_prompts import irrelevant_agent_prompt
 from app.core.state import SellState
 from langchain_core.messages import AIMessage
-from app.core.utils.graph_function import GraphFunction
+from app.core.utils.graph_function import graph_function
 from typing import Literal
-from app.core.model import init_model
+from app.core.model import llm_agent
 from app.core.utils.helper_function import get_chat_his
 
 class IrrelevantNodes:
     def __init__(self):
-        self.graph_function = GraphFunction()
-        self.llm = init_model()
+        self.llm = llm_agent
         
     def irrelevant_agent(self, 
                          state: SellState

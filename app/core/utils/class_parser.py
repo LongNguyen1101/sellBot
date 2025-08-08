@@ -1,11 +1,25 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal, Optional, TypedDict, List
 
 
 
 class SubQuery(TypedDict):
-        id: int
-        sub_query: str
+        id: int = Field(
+            description="Số nguyên (bắt đầu từ 1)"
+        )
+        agent: (Literal["product_agent", 
+                        "cart_agent", 
+                        "order_agent", 
+                        "customer_agent",
+                        "customer_service_agent", 
+                        "irrelevant_agent", 
+                        "store_info_agent"]
+        ) = Field(
+            description="Tên của agent cần trả về"
+        )
+        sub_query: str = Field(
+            description="sub_query được tách ra dựa vào query ban đầu của khách hàng."
+        )
 
 class SplitRequestOutput(TypedDict):
     tasks: List[SubQuery]

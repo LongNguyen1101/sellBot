@@ -3,7 +3,7 @@ import json
 from langchain_core.tools import tool, InjectedToolCallId
 from sqlalchemy import Subquery
 from app.core.utils.graph_function import GraphFunction
-from app.core.model import init_model
+from app.core.model import llm
 from app.core.order_agent.order_prompts import choose_order_prompt
 from app.core.state import SellState
 from typing import Annotated, Optional, Tuple, List
@@ -17,7 +17,7 @@ from app.models.normal_models import Order
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 
-llm = init_model()
+
 
 def _check_customer(
     chat_id: int, 

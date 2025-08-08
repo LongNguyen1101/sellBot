@@ -3,18 +3,15 @@ from app.core.customer_agent.customer_prompts import customer_agent_system_promp
 from app.core.customer_agent.customer_tools import add_phone_name_address_tool
 from app.core.state import SellState
 from langchain_core.messages import AIMessage
-from app.core.utils.class_parser import AgentToolResponse
-from app.core.utils.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
-from app.core.model import init_model
+from app.core.model import llm_agent
 from app.core.utils.helper_function import get_chat_his
 from typing import Literal
 
 class CustomerNodes:
     def __init__(self):
-        self.llm = init_model()
         self.create_customer_agent = create_react_agent(
-            model=self.llm,
+            model=llm_agent,
             tools=[add_phone_name_address_tool],
             prompt = customer_agent_system_prompt(),
             state_schema=SellState

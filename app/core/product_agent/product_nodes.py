@@ -3,21 +3,18 @@ from pydantic import BaseModel
 from app.core.utils.helper_function import get_chat_his
 from app.core.state import SellState
 from langchain_core.messages import AIMessage
-from app.core.utils.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 from app.core.product_agent.product_tools import (
     get_products_tool
 )
 from app.core.product_agent.product_prompts import product_agent_system_prompt
-from app.core.model import init_model
+from app.core.model import llm_agent
 from typing import Literal
-from app.core.utils.class_parser import AgentToolResponse
 
 class ProductNodes:
     def __init__(self):
-        self.llm = init_model()
         self.create_product_agent = create_react_agent(
-            model=self.llm,
+            model=llm_agent,
             tools=[get_products_tool],
             prompt = product_agent_system_prompt(),
             state_schema=SellState, 
