@@ -105,11 +105,15 @@ class GraphFunction:
             )
             return customer, "Tạo khách hàng mới thành công."
             
-    def get_customer(self,
-                     chat_id: str,
-                     public_crud: PublicCRUD
-    ) -> Optional[Customer]:
-        return public_crud.get_customer_by_chat_id(chat_id)
+    def get_or_create_customer(self,
+                               chat_id: str,
+                               public_crud: PublicCRUD
+    ):
+        customer =  public_crud.get_customer_by_chat_id(chat_id)
+        if customer:
+            return customer, "found"
+        return public_crud.create_customer_raw_sql(chat_id=chat_id), "create"
+        
             
     def create_customer(self,
                         chat_id: str,

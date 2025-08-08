@@ -15,4 +15,4 @@ def init_model(model_name: Optional[str] = MODEL_NAME):
         return ChatOpenAI(model=model_name)
 
 llm = init_model()
-llm_agent = init_model()
+llm_agent = init_model(model_name="gemini-2.5-flash")

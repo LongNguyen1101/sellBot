@@ -72,51 +72,6 @@ def _get_products(
                 
         return tool_response, seen_products
 
-def _check_customer(
-    customer_id: Optional[int], 
-    chat_id: int, 
-) -> Tuple[AgentToolResponse, dict]:
-    with session_scope() as sess:
-        public_crud = PublicCRUD(sess)
-        tool_response: AgentToolResponse = {}
-        update = {}
-        
-        if customer_id:
-            return tool_response, update
-        
-        customer = graph_function.get_customer_by_chat_id(chat_id, public_crud=public_crud)
-        
-        if customer:
-            log = (
-                ">>>> Tìm thấy thông tin của khách:",
-                f"Tên: {customer["name"]}. "
-                f"Số điện thoại: {customer["phone_number"]}. "
-                f"Địa chỉ: {customer["address"]}. "
-                f"ID khách: {customer["customer_id"]}."
-            )
-            
-            print(log)
-            update.update({
-                "name": customer["name"],
-                "phone_number":customer["phone_number"],
-                "address":customer["address"],
-                "customer_id":customer["customer_id"]
-            })
-            
-            tool_response["content"] = (
-                "Đã tìm thấy thông tin khách hàng.\n"
-                "Nếu chỉ có một sản phẩm trả về thì hãy hỏi khách muốn lên đơn luôn không.\n"
-                "Nếu có nhiều sản phẩm trả về thì hỏi khách chọn sản phẩm nào."
-            )
-        else:
-            tool_response["content"] = (
-                "Không có thông tin khách hàng.\n"
-                "Nếu chỉ có một sản phẩm trả về thì hỏi khách số điện thoại để tư vấn và lên đơn.\n"
-                "Nếu có nhiều sản phẩm trả về thì hỏi khách chọn sản phẩm và cho số điện thoại để liên hệ tư vấn."
-            )
-            
-        return tool_response, update
-
 @tool
 def get_products_tool(
     keyword: Annotated[str, "The keyword of products"],
@@ -126,52 +81,34 @@ def get_products_tool(
     """Use this tool to get products from database follow by the keyword of customer"""
     try:
         update = {}
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            # Gửi tác vụ _get_products để thực thi
-            future_products = executor.submit(
-                _get_products,
-                keyword=keyword,
-                user_input=state["user_input"]
-            )
-
-            # Gửi tác vụ _check_customer để thực thi
-            future_customer = executor.submit(
-                _check_customer,
-                customer_id=state["customer_id"],
-                chat_id=state["chat_id"]
-            )
-
-            # Lấy kết quả từ các tác vụ
-            tool_response_products, seen_products = future_products.result()
-            tool_response_customer, new_update = future_customer.result()
+        phone_number = state["phone_number"]
+        
+        tool_response, seen_products = _get_products(
+            keyword=keyword,
+            user_input=state["user_input"]
+        )
             
         update["seen_products"] = seen_products
-        final_tool_response = tool_response_products
         
-        # Safely combine content
-        customer_content = tool_response_customer.get("content")
-        if customer_content:
-            if final_tool_response.get("content"):
-                final_tool_response["content"] += "\n" + customer_content
-            else:
-                final_tool_response["content"] = customer_content
+        if not phone_number:
+            tool_response["content"] += (
+                "Khách chưa có số điện thoại.\n"
+                "Xin khách số điện thoại để liên hệ tư vấn.\n"
+            )
                 
         update.update({
             "messages": [
                 ToolMessage(
-                    content=final_tool_response.get("content", ""),
+                    content=tool_response.get("content", ""),
                     tool_call_id=tool_call_id
                 )
             ],
-            "status": final_tool_response.get("status", "error")
+            "status": tool_response.get("status", "error")
         })
-        update.update(new_update)
         
         print(f">>>> Upadate tool: {update}")
         
-        return Command(
-            update=update
-        )
+        return Command(update=update)
             
     except Exception as e:
         # Log the exception for debugging

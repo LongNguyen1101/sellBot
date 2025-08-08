@@ -189,6 +189,32 @@ class PublicCRUD:
         self.db.commit()
         self.db.refresh(customer)
         return customer
+    
+    def create_customer_raw_sql(self, 
+                                name: Optional[str] = None,
+                                phone_number: Optional[str] = None, 
+                                address: Optional[str] = None,
+                                chat_id: str = None,
+    ) -> dict:
+        sql = text(
+            """
+            INSERT INTO customer (name, phone_number, address, chat_id, created_at)
+            VALUES (:name, :phone_number, :address, :chat_id, :created_at)
+            RETURNING customer_id, name, phone_number, address, chat_id, created_at
+            """
+        )
+        
+        params = {
+            "name": name,
+            "phone_number": phone_number,
+            "address": address,
+            "chat_id": chat_id,
+            "created_at": datetime.now()
+        }
+        
+        result = self.db.execute(sql, params)
+        self.db.commit()
+        return result.mappings().first()
 
     def get_customer_by_id(self, customer_id: int) -> Optional[Customer]:
         return self.db.query(Customer).filter(Customer.customer_id == customer_id).first()
