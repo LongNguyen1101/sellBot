@@ -71,13 +71,14 @@ def add_phone_name_address_tool(
             
             if cart and "place_holder" not in cart:
                 print(">>>> Khách có hàng trong giỏ -> lên đơn")
-                if all([customer.customer_id, customer.name, customer.phone_number, customer.address]):
-                    new_tasks = SubQuery(
-                        id=1,
-                        agent="order_agent",
-                        sub_query="Lên đơn cho khách."
-                    )
-                    tasks = SplitRequestOutput(new_tasks)
+                if all([customer["customer_id"], customer["name"], customer["phone_number"], customer["address"]]):
+                    tasks = [
+                        {
+                            "id": 1,
+                            "agent": "order_agent",
+                            "sub_query": "Lên đơn cho khách."
+                        }
+                    ]
                     
                     tool_response = {
                         "status": "finish",
@@ -110,6 +111,7 @@ def add_phone_name_address_tool(
                         "content": (
                             "Đây là các sản phẩm khách vừa xem:\n"
                             f"{seen_products}\n\n"
+                            "Hãy liệt kê ra để khách chọn.\n"
                             "Hỏi khách muốn mua sản phẩm nào"
                         )
                     }

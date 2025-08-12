@@ -70,7 +70,7 @@ class OrderNodes:
         update["next_node"] = next_node
         update["tasks"] = tasks
             
-        for key in ["orders", "cart", "name", "phone_number", "address", "customer_id", "tasks"]:
+        for key in ["orders", "cart", "name", "phone_number", "address", "customer_id"]:
            if response.get(key, None) is not None:
                update[key] = response[key]
                
