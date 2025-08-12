@@ -95,9 +95,9 @@ def add_phone_name_address_tool(
                         "content": (
                             "Thiếu thông tin khách hàng để lên đơn.\n"
                             "Đây là các thông tin của khách:\n"
-                            f"Tên: {customer.name}\n"
-                            f"SĐT: {customer.phone_number}\n"
-                            f"Địa chỉ: {customer.address}\n"
+                            f"Tên: {customer["name"]}\n"
+                            f"SĐT: {customer["phone_number"]}\n"
+                            f"Địa chỉ: {customer["address"]}\n"
                             "Xác nhận với khách các thông tin đã có "
                             "và hỏi khách các thông tin còn thiếu.\n"
                         )
