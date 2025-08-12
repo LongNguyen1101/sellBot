@@ -2,7 +2,7 @@ from langgraph.types import Command
 from pydantic import BaseModel
 from app.core.utils.helper_function import get_chat_his
 from app.core.state import SellState
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
 from app.core.product_agent.product_tools import (
     get_products_tool
@@ -27,12 +27,16 @@ class ProductNodes:
             state["messages"],
             start_offset=-10
         )
+        state["messages"].append(
+            HumanMessage(content=state["current_task"])
+        )
         tasks = state["tasks"]
         next_node = "__end__"
         update = {}
         
         response = self.create_product_agent.invoke(state)
-        content = response["messages"][-1].content
+        print(f">>>> new response: {response}")
+        content = response["messages"][-1].content[0]["text"]
         status = response["status"]
         
         if status == "asking":

@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph
 from langgraph.checkpoint.memory import MemorySaver
-from app.core.cart_agent.cart_nodes import CarttNodes
+from app.core.cart_agent.cart_nodes import CartNodes
 from app.core.customer_agent.customer_nodes import CustomerNodes
 from app.core.irrelevant_agent.irrelevant_nodes import IrrelevantNodes
 from app.core.order_agent.order_nodes import OrderNodes
@@ -22,7 +22,7 @@ retry_policy = RetryPolicy(
 def build_graph() -> StateGraph:
     router_node = RouterNodes()
     product_node = ProductNodes()
-    cart_node = CarttNodes()
+    cart_node = CartNodes()
     user_node = UserNodes()
     order_node = OrderNodes()
     customer_node = CustomerNodes()

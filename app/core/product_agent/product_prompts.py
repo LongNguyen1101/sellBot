@@ -19,8 +19,6 @@ def product_agent_system_prompt() -> str:
         "Bạn cần tạo phản hồi dựa trên thông tin content của ToolMessage.\n"
         
         "Lưu ý:\n"
-        "- Đầu ra của json ở dưới dạng chuỗi, không sử dụng markdown json ('''json, ''') và không sử dụng "
-        "ký tự xuống dòng (\\n)"
         "- BẮT BUỘC GỌI công cụ (tools) đúng 1 lần duy nhất, sau đó tạo phản hồi và không gọ bất kỳ tools nào khác.\n"
         "- Xưng hô khách là 'khách'.\n"
         "- Xưng hô bản thân là 'em'.\n"

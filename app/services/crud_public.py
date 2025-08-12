@@ -1,13 +1,15 @@
 from sqlalchemy.orm import Session
 from app.models.normal_models import (
-    ProductDescription, Pricing, Inventory, Cart,
+    ProductDescription, Pricing,
     Order, OrderItem, Customer
 )
 from datetime import datetime
-from typing import Optional, List
-from sqlalchemy import text
-from sqlalchemy.exc import ResourceClosedError, SQLAlchemyError
+from typing import Any, Optional, List
+from sqlalchemy import text, bindparam
 
+UNSHIPPED_STATUSES = ['pending', 'created', 'awaiting_payment', 'confirmed', 'processing']
+SHIPPED_STATUSES = ['shipped', 'in_transit', 'delivered', 'cancelled', 'returned', 'refunded']
+NON_EDITABLE_STATUSES = ['delivered', 'cancelled', 'returned', 'refunded']
 
 class PublicCRUD:
     def __init__(self, db: Session):
@@ -15,7 +17,10 @@ class PublicCRUD:
         
     # ------------------ EMBEDDING QUERY ------------------ #
     
-    def call_match_qna(self, embedding_vector: list[float], match_count: int = 5):
+    def call_match_qna(self, 
+                       embedding_vector: list[float], 
+                       match_count: int = 5
+    ) -> List[dict]:
         sql = text("""
             SELECT * FROM match_qna(:query_embedding, :match_count)
         """)
@@ -27,7 +32,10 @@ class PublicCRUD:
 
         return [dict(r._mapping) for r in result]
     
-    def call_match_common_situation(self, embedding_vector: list[float], match_count: int = 5):
+    def call_match_common_situation(self, 
+                                    embedding_vector: list[float], 
+                                    match_count: int = 5
+    ) -> List[dict]:
         sql = text("""
             SELECT * FROM match_common_situations(:query_embedding, :match_count)
         """)
@@ -39,7 +47,10 @@ class PublicCRUD:
 
         return [dict(r._mapping) for r in result]
     
-    def call_match_product_descriptions(self, embedding_vector: list[float], match_count: int = 5):
+    def call_match_product_descriptions(self, 
+                                        embedding_vector: list[float], 
+                                        match_count: int = 5
+    ) -> List[dict]:
         sql = text("""
             SELECT * FROM match_product_descriptions(:query_embedding, :match_count)
         """)
@@ -53,62 +64,35 @@ class PublicCRUD:
         
     # ------------------ OTHER QUERY ------------------ #
     
-    def get_order_summary_by_id(self, order_id: int) -> Optional[dict]:
-        result = (
-            self.db.query(
-                Customer.name.label("customer_name"),
-                Customer.phone_number.label("customer_phone"),
-                Customer.address.label("customer_address"),
-
-                Order.payment,
-                Order.order_total,
-                Order.shipping_fee,
-                Order.grand_total
-            )
-            .join(Customer, Order.customer_id == Customer.customer_id)
-            .filter(Order.order_id == order_id)
-            .first()
-        )
-
-        return dict(result._mapping) if result else None
-    
     def get_order_items_with_details(self, order_id: int) -> List[dict]:
-        results = (
-            self.db.query(
-                OrderItem.id.label("item_id"),
-                OrderItem.product_id,
-                OrderItem.sku,
-                ProductDescription.product_name,
-                Pricing.variance_description.label("variance_name"),
-                OrderItem.quantity,
-                OrderItem.price,
-                OrderItem.subtotal,
-            )
-            .join(ProductDescription, OrderItem.product_id == ProductDescription.product_id)
-            .join(Pricing, OrderItem.sku == Pricing.sku)
-            .filter(OrderItem.order_id == order_id)
-            .all()
-        )
+        sql = text("""
+            SELECT
+                oi.id AS item_id,
+                oi.product_id,
+                oi.sku,
+                pd.product_name,
+                p.variance_description AS variance_name,
+                oi.quantity,
+                oi.price,
+                oi.subtotal
+            FROM order_item oi
+            JOIN product_description pd ON oi.product_id = pd.product_id
+            JOIN pricing p ON oi.sku = p.sku
+            WHERE oi.order_id = :order_id
+        """)
+
+        params = {"order_id": order_id}
+
+        result = self.db.execute(sql, params)
+        rows = result.fetchall()
+
+        return [dict(row) for row in rows] if rows else None
     
-        return [dict(row._mapping) for row in results]
-    
-    def execute_command(self, command: str) -> List[dict]:
-        sql = text(command.strip())
-        try:
-            result = self.db.execute(sql)
-            # Kiểm tra có trả về dòng không (SELECT, RETURNING, ...)
-            if result.returns_rows:
-                return [dict(row._mapping) for row in result.fetchall()]
-            else:
-                self.db.commit()  # Câu UPDATE, INSERT, DELETE cần commit
-                return []
-        except ResourceClosedError:
-            self.db.commit()
-            return []
-    
-    def search_products_by_keyword(self, keyword: str, limit: int = 5) -> List[dict]:
-        sql = text(
-            """
+    def search_products_by_keyword(self, 
+                                   keyword: str, 
+                                   limit: int = 5,
+    ) -> List[dict] | None:
+        sql = text("""
             SELECT 
                 pd.product_id,
                 p.sku,
@@ -122,53 +106,43 @@ class PublicCRUD:
             WHERE pd.product_name ILIKE :pattern
               AND p.price != 0
             LIMIT :limit
-            """
-        )
+        """)
         params = {"pattern": f"%{keyword}%", "limit": limit}
         
         result = self.db.execute(sql, params)
-        return result.mappings().all()
-    
-    def get_product_by_product_id_and_sku(self, product_id: int, sku: str) -> dict:
-        results = (
-            self.db.query(
-                ProductDescription.product_name,
-                Pricing.price
-            )
-            .join(Pricing, ProductDescription.product_id == Pricing.product_id)
-            .join(Inventory, Pricing.sku == Inventory.sku)
-            .filter(
-                ProductDescription.product_id == product_id,
-                Pricing.sku == sku
-            )
-            .first()
-        )
+        self.db.commit()
+        rows = result.mappings().all()
         
-        return dict(results._mapping) # chuyển kết quả thành list of dict
+        return [dict(row) for row in rows] if rows else None
     
     def search_products_by_product_ids(self, 
                                        product_ids: List[int]
-    ) -> Optional[List[dict]]:
-        results = (
-            self.db.query(
-                ProductDescription.product_id,
-                Pricing.sku,
-                ProductDescription.product_name,
-                Pricing.variance_description,
-                ProductDescription.brief_description,
-                Pricing.price,
-                Pricing.inventory
-            )
-            .join(Pricing, ProductDescription.product_id == Pricing.product_id)
-            .filter(
-                ProductDescription.product_id.in_(product_ids),
-                Pricing.inventory != 0,
-                Pricing.price != 0
-            )
-            .all()
-        )
+    ) -> Optional[List[dict]] | None:
+        sql = text("""
+            SELECT
+                pd.product_id,
+                p.sku,
+                pd.product_name,
+                p.variance_description,
+                pd.brief_description,
+                p.price,
+                p.inventory
+            FROM product_description pd
+            JOIN pricing p ON pd.product_id = p.product_id
+            WHERE pd.product_id IN :product_ids
+              AND p.inventory != 0
+              AND p.price != 0
+        """).bindparams(bindparam("product_ids", expanding=True))
 
-        return [dict(row._mapping) for row in results]
+        params = {"product_ids": product_ids}
+
+        result = self.db.execute(sql, params)
+        self.db.commit()
+        rows = result.mappings().all()
+        
+        print(f">>>> rows: {rows}")
+        
+        return [dict(row) for row in rows] if rows else None
     
     # ------------------ CUSTOMER ------------------ #
     
@@ -177,32 +151,13 @@ class PublicCRUD:
                         phone_number: Optional[str] = None, 
                         address: Optional[str] = None,
                         chat_id: str = None,
-    ) -> Customer:
-        customer = Customer(
-            name=name,
-            phone_number=phone_number,
-            address=address,
-            chat_id=chat_id,
-            created_at=datetime.now()
-        )
-        self.db.add(customer)
-        self.db.commit()
-        self.db.refresh(customer)
-        return customer
-    
-    def create_customer_raw_sql(self, 
-                                name: Optional[str] = None,
-                                phone_number: Optional[str] = None, 
-                                address: Optional[str] = None,
-                                chat_id: str = None,
-    ) -> dict:
-        sql = text(
-            """
+                        parse_object: bool = True
+    ) -> Customer | dict[str, Any] | None:
+        sql = text("""
             INSERT INTO customer (name, phone_number, address, chat_id, created_at)
             VALUES (:name, :phone_number, :address, :chat_id, :created_at)
             RETURNING customer_id, name, phone_number, address, chat_id, created_at
-            """
-        )
+        """)
         
         params = {
             "name": name,
@@ -214,144 +169,277 @@ class PublicCRUD:
         
         result = self.db.execute(sql, params)
         self.db.commit()
-        return result.mappings().first()
+        row = result.mappings().first()
+        
+        if not row:
+            return None
+        
+        return Customer(**row) if parse_object else dict(row)
+    
+    def get_customer_by_id(self, 
+                           customer_id: int, 
+                           parse_object: bool = True
+    ) -> Customer | dict[str, Any] | None:
+        sql = text("""
+            SELECT customer_id, name, phone_number, address, chat_id
+            FROM customer
+            WHERE customer_id = :customer_id
+            LIMIT 1
+        """)
 
-    def get_customer_by_id(self, customer_id: int) -> Optional[Customer]:
-        return self.db.query(Customer).filter(Customer.customer_id == customer_id).first()
+        params = {"customer_id": customer_id}
+
+        result = self.db.execute(sql, params)
+        row = result.mappings().first()
+
+        if not row:
+            return None
+        
+        return Customer(**row) if parse_object else dict(row)
     
-    def get_customer_by_phone_number(self, phone_number: str) -> Optional[Customer]:
-        return self.db.query(Customer).filter(Customer.phone_number == phone_number).first()
     
-    def get_customer_by_chat_id(self, chat_id: str) -> Optional[dict]:
-        sql = text(
-            """
+    def get_customer_by_chat_id(self, 
+                                chat_id: str, 
+                                parse_object: bool = True
+    ) -> Customer | dict[str, Any] | None:
+        sql = text("""
             SELECT customer_id, name, phone_number, address
             FROM customer
             WHERE chat_id = :chat_id
             LIMIT 1
-            """
-        )
+        """)
         params = {"chat_id": chat_id}
         
         result = self.db.execute(sql, params)
         row = result.mappings().first()
-        # if row:
-        #     return Customer(**row)
-        # return None
-        return row
-
-    def get_all_customers(self) -> List[Customer]:
-        return self.db.query(Customer).all()
-
-    def update_customer_info(self, 
+        
+        if not row:
+            return None
+        
+        return Customer(**row) if parse_object else dict(row)
+    
+    def update_customer_info(self,
                              customer_id: int,
                              name: Optional[str] = None,
                              phone_number: Optional[str] = None,
-                             address: Optional[str] = None
-    ) -> Optional[Customer]:
-        customer = self.get_customer_by_id(customer_id)
-        if customer:
-            if name is not None:
-                customer.name = name
-            if phone_number is not None:
-                customer.phone_number = phone_number
-            if address is not None:
-                customer.address = address
-            self.db.commit()
-            self.db.refresh(customer)
-            return customer
-        return None
-    
-    def update_customer_state_by_chat_id(db: Session, chat_id: str, new_state: dict) -> Optional[Customer]:
-        customer = db.query(Customer).filter(Customer.chat_id == chat_id).one()
-        customer.state = new_state
-        db.commit()
-        db.refresh(customer)
-        return customer
+                             address: Optional[str] = None,
+                             parse_object: bool = True
+    ) -> Customer | dict[str, Any] | None:
+        updated_fields = {
+            k: v for k, v in {
+                "name": name,
+                "phone_number": phone_number, 
+                "address": address
+            }.items() if v is not None
+        }
+        
+        if not updated_fields:
+            return self.get_customer_by_id(customer_id, parse_object)
+
+        set_clause_sql = ", ".join(f"{k} = :{k}" for k in updated_fields.keys())
+        params = {"customer_id": customer_id, **updated_fields}
+
+        sql = text(f"""
+            UPDATE customer 
+            SET {set_clause_sql}
+            WHERE customer_id = :customer_id
+            RETURNING customer_id, name, phone_number, address, chat_id
+        """)
+        
+        result = self.db.execute(sql, params)
+        row = result.mappings().first()
+        
+        if not row:
+            return None
+        
+        return Customer(**row) if parse_object else dict(row)
 
     def delete_customer(self, customer_id: int) -> bool:
-        customer = self.get_customer_by_id(customer_id)
-        if customer:
-            self.db.delete(customer)
-            self.db.commit()
-            return True
-        return False
+        sql = text("""
+            DELETE FROM customer
+            WHERE customer_id = :customer_id
+            RETURNING 1
+        """)
+        params = {"customer_id": customer_id}
+
+        res = self.db.execute(sql, params)
+        self.db.commit()
+
+        return res.fetchone() is not None
     
     # ------------------ ORDER ------------------ #
     
     def create_order(self,
-                     customer_id: Optional[int] = None,
-                     status: Optional[str] = 'pending',
-                     order_total: Optional[int] = 0,
-                     shipping_fee: Optional[int] = 0,
-                     grand_total: Optional[int] = None,
-                     payment: Optional[str] = 'COD',
+                     customer_id: int = None,
+                     status: str = 'pending',
+                     order_total: int = 0,
+                     shipping_fee: int = 0,
+                     grand_total: int = 0,
+                     payment: str = 'COD',
                      receiver_name: Optional[str] = "Không có",
                      receiver_phone_number: Optional[str] = "Không có",
-                     receiver_address: Optional[str] = "Không có",
-                 
-    ) -> Order:
-    
-        if grand_total is None:
-            grand_total = order_total + shipping_fee
+                     receiver_address: Optional[str] = "Không có"
+    ) -> int | None:
+        sql = text("""
+            INSERT INTO orders (
+                customer_id, status, order_total, shipping_fee, grand_total, payment,
+                created_at, updated_at, receiver_name, receiver_phone_number, receiver_address
+            )
+            VALUES (
+                :customer_id, :status, :order_total, :shipping_fee, :grand_total, :payment,
+                :created_at, :updated_at, :receiver_name, :receiver_phone_number, :receiver_address
+            )
+            RETURNING order_id
+        """)
 
-        order = Order(
-            customer_id=customer_id,
-            status=status,
-            order_total=order_total,
-            shipping_fee=shipping_fee,
-            grand_total=grand_total,
-            payment=payment,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-            receiver_name=receiver_name,
-            receiver_phone_number=receiver_phone_number,
-            receiver_address=receiver_address
-        )
+        now = datetime.now()
+        params = {
+            "customer_id": customer_id,
+            "status": status,
+            "order_total": order_total,
+            "shipping_fee": shipping_fee,
+            "grand_total": grand_total,
+            "payment": payment,
+            "created_at": now,
+            "updated_at": now,
+            "receiver_name": receiver_name,
+            "receiver_phone_number": receiver_phone_number,
+            "receiver_address": receiver_address
+        }
 
-        self.db.add(order)
+        result = self.db.execute(sql, params)
         self.db.commit()
-        self.db.refresh(order)
-        return order
+        row = result.fetchone()
+        
+        return row[0] if row else None
+            
+    def get_editable_orders(self, 
+                            customer_id: int
+    ) -> List[dict[str, Any]] | None:
+        
+        all_statuses = set(UNSHIPPED_STATUSES + SHIPPED_STATUSES)
+        editable_statuses = list(all_statuses - set(NON_EDITABLE_STATUSES))
+
+        sql = text("""
+            SELECT
+              o.*,
+              COALESCE(oi.items, '[]'::json) AS order_items
+            FROM orders o
+            LEFT JOIN LATERAL (
+              SELECT JSON_AGG(
+                       JSON_BUILD_OBJECT(
+                         'id', oi.id,
+                         'product_id', oi.product_id,
+                         'quantity', oi.quantity,
+                         'price', oi.price,
+                         'subtotal', oi.subtotal,
+                         'product_name', pd.product_name,
+                         'variance_name', pr.variance_description
+                       ) ORDER BY oi.id
+                     ) AS items
+              FROM order_items oi
+              LEFT JOIN product_description pd ON oi.product_id = pd.product_id
+              LEFT JOIN pricing pr ON oi.sku = pr.sku
+              WHERE oi.order_id = o.order_id
+            ) oi ON true
+            WHERE o.customer_id = :customer_id
+              AND o.status = ANY(:editable_statuses)
+            ORDER BY o.created_at DESC;
+        """)
+
+        params = {
+            "customer_id": customer_id,
+            "editable_statuses": editable_statuses
+        }
+
+        result = self.db.execute(sql, params)
+        rows = result.mappings().all()
+
+        return [dict(row) for row in rows] if rows else None
     
-    def get_unshipped_order(self, customer_id: int) -> Optional[Order]:
-        unshipped_statuses = ['pending', 'created', 'awaiting_payment', 'confirmed', 'processing']
-        return self.db.query(Order)\
-            .filter(Order.customer_id == customer_id)\
-            .filter(Order.status.in_(unshipped_statuses))\
-            .first()
-            
-    def get_shipped_order(self, customer_id: int) -> Optional[List[Order]]:
-        shipped_statuses = ['shipped', 'in_transit', 'delivered', 'cancelled', 'returned', 'refunded']
-        return self.db.query(Order)\
-            .filter(Order.customer_id == customer_id)\
-            .filter(Order.status.in_(shipped_statuses))\
-            .all()
-            
-    def get_editable_orders(self, customer_id: int) -> Optional[List[Order]]:
-        shipped_statuses = ['delivered', 'cancelled', 'returned', 'refunded']
-        return (
-            self.db.query(Order)
-            .filter(Order.customer_id == customer_id)
-            .filter(Order.status.notin_(shipped_statuses))
-            .all()
-        )
+    def get_order_with_items(self,
+                             order_id: int
+    ) -> dict[str, Any] | None:
+        sql = text("""
+            SELECT
+              o.*,
+              COALESCE(oi.items, '[]'::json) AS order_items
+            FROM orders o
+            LEFT JOIN LATERAL (
+              SELECT JSON_AGG(
+                       JSON_BUILD_OBJECT(
+                         'id', oi.id,
+                         'product_id', oi.product_id,
+                         'quantity', oi.quantity,
+                         'price', oi.price,
+                         'subtotal', oi.subtotal,
+                         'product_name', pd.product_name,
+                         'variance_name', pr.variance_description
+                       ) ORDER BY oi.id
+                     ) AS items
+              FROM order_items oi
+              LEFT JOIN product_description pd ON oi.product_id = pd.product_id
+              LEFT JOIN pricing pr ON oi.sku = pr.sku
+              WHERE oi.order_id = o.order_id
+            ) oi ON true
+            WHERE o.order_id = :order_id;
+        """)
 
-    def get_order_by_id(self, order_id: int) -> Optional[Order]:
-        return self.db.query(Order).filter(Order.order_id == order_id).first()
+        params = {"order_id": order_id}
 
-    def get_all_orders(self) -> List[Order]:
-        return self.db.query(Order).all()
+        result = self.db.execute(sql, params)
+        row = result.mappings().first()
 
-    def update_order_status(self, order_id: int, new_status: str) -> Optional[Order]:
-        order = self.get_order_by_id(order_id)
-        if order:
-            order.status = new_status
-            order.updated_at = datetime.now()
-            self.db.commit()
-            self.db.refresh(order)
-            return order
-        return None
+        return dict(row) if row else None
+    
+    def get_order_by_id(self, 
+                        order_id: int, 
+                        parse_object: bool = True
+    ) -> Order | dict[str, Any] | None:
+        sql = text("""
+            SELECT *
+            FROM orders 
+            WHERE order_id = :order_id
+            LIMIT 1
+        """)
+        
+        params = {"order_id": order_id}
+        
+        result = self.db.execute(sql, params)
+        row = result.mappings().first()
+        
+        if not row:
+            return None
+        
+        return Order(**row) if parse_object else dict(row)
+
+    def update_order_status(self, 
+                            order_id: int, 
+                            new_status: str, 
+                            parse_object: bool = True
+    ) -> Order | dict[str, Any] | None:
+        sql = text("""
+            UPDATE orders 
+            SET status = :new_status, updated_at = :updated_at
+            WHERE order_id = :order_id
+            RETURNING order_id, customer_id, status, total_amount, created_at, updated_at,
+                      shipping_address, notes
+        """)
+        
+        params = {
+            "order_id": order_id,
+            "new_status": new_status,
+            "updated_at": datetime.now()
+        }
+        
+        result = self.db.execute(sql, params)
+        self.db.commit()
+        row = result.mappings().first()
+        
+        if not row:
+            return None
+        
+        return Order(**row) if parse_object else dict(row)
     
     def update_order(self, 
                      order_id: int, 
@@ -362,316 +450,377 @@ class PublicCRUD:
                      receiver_name: Optional[str] = None,
                      receiver_phone_number: Optional[str] = None,
                      receiver_address: Optional[str] = None,
-                     status: Optional[str] = None
-    ) -> Optional[Order]:
-        order = self.get_order_by_id(order_id)
-        if not order:
+                     status: Optional[str] = None,
+                     parse_object: bool = True
+    ) -> Order | dict[str, Any] | None:
+        
+        updated_fields = {}
+        if payment is not None:
+            updated_fields["payment"] = payment
+        if order_total is not None:
+            updated_fields["order_total"] = order_total
+        if shipping_fee is not None:
+            updated_fields["shipping_fee"] = shipping_fee
+        if grand_total is not None:
+            updated_fields["grand_total"] = grand_total
+        if receiver_name is not None:
+            updated_fields["receiver_name"] = receiver_name
+        if receiver_phone_number is not None:
+            updated_fields["receiver_phone_number"] = receiver_phone_number
+        if receiver_address is not None:
+            updated_fields["receiver_address"] = receiver_address
+        if status is not None:
+            updated_fields["status"] = status
+
+        if not updated_fields:
+            return self.get_order_by_id(order_id, parse_object)
+
+        set_clause = ", ".join(f"{k} = :{k}" for k in updated_fields.keys())
+        params = {"order_id": order_id, "updated_at": datetime.now(), **updated_fields}
+
+        sql = text(f"""
+            UPDATE orders
+            SET {set_clause}, updated_at = :updated_at
+            WHERE order_id = :order_id
+            RETURNING *
+        """)
+
+        result = self.db.execute(sql, params)
+        self.db.commit()
+        row = result.mappings().first()
+
+        if not row:
             return None
 
-        if payment is not None:
-            order.payment = payment
-        if order_total is not None:
-            order.order_total = order_total
-        if shipping_fee is not None:
-            order.shipping_fee = shipping_fee
-        if grand_total is not None:
-            order.grand_total = grand_total
-        if receiver_name is not None:
-            order.receiver_name = receiver_name
-        if receiver_phone_number is not None:
-            order.receiver_phone_number = receiver_phone_number
-        if receiver_address is not None:
-            order.receiver_address = receiver_address
-        if status is not None:
-            order.status = status
-            
-        order.updated_at = datetime.now()
-
-        order.updated_at = datetime.now()
-        self.db.commit()
-        self.db.refresh(order)
-        return order
-
+        return Order(**row) if parse_object else dict(row)
+    
     def delete_order(self, order_id: int) -> bool:
-        order = self.get_order_by_id(order_id)
-        if order:
-            self.db.delete(order)
-            self.db.commit()
-            return True
-        return False
+        sql = text("""
+            DELETE FROM orders 
+            WHERE order_id = :order_id
+            RETURNING 1
+        """)
+        
+        params = {"order_id": order_id}
+        
+        res = self.db.execute(sql, params)
+        self.db.commit()
+        
+        return res.fetchone() is not None
     
     # ------------------ ORDERITEM ------------------ #
     
     def create_order_item(self, order_id: int, product_id: int, sku: str,
-                          quantity: Optional[int] = None,
-                          price: Optional[int] = None,
-                          subtotal: Optional[int] = None) -> OrderItem:
-        order_item = OrderItem(
-            order_id=order_id,
-            product_id=product_id,
-            sku=sku,
-            quantity=quantity,
-            price=price,
-            subtotal=subtotal
-        )
-        self.db.add(order_item)
-        self.db.commit()
-        self.db.refresh(order_item)
-        return order_item
+                      quantity: Optional[int] = None,
+                      price: Optional[int] = None,
+                      subtotal: Optional[int] = None,
+                      parse_object: bool = True
+    ) -> OrderItem | dict[str, Any] | None:
     
-    def create_order_items_bulk(self, order_items: List[OrderItem]) -> Optional[List[OrderItem]]:
-        self.db.add_all(order_items)
+        sql = text("""
+            INSERT INTO order_items (order_id, product_id, sku, quantity, price, subtotal)
+            VALUES (:order_id, :product_id, :sku, :quantity, :price, :subtotal)
+            RETURNING *
+        """)
+
+        params = {
+            "order_id": order_id,
+            "product_id": product_id,
+            "sku": sku,
+            "quantity": quantity,
+            "price": price,
+            "subtotal": subtotal
+        }
+
+        result = self.db.execute(sql, params)
         self.db.commit()
-        for item in order_items:
-            self.db.refresh(item)
-        return order_items
-
-    def get_order_item_by_id(self, item_id: int) -> Optional[OrderItem]:
-        return self.db.query(OrderItem).filter(OrderItem.id == item_id).first()
-
-    def get_items_by_order_id(self, order_id: int) -> List[OrderItem]:
-        return self.db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
-    
-    def get_items_by_order_id_sku_product_id(self,
-                                             order_id: int,
-                                             product_id: int,
-                                             sku: str) -> Optional[OrderItem]:
+        row = result.mappings().first()
         
-        return (
-            self.db.query(OrderItem)
-            .filter(
-                OrderItem.order_id == order_id,
-                OrderItem.product_id == product_id,
-                OrderItem.sku == sku
-            ).first()
-        )
+        if not row:
+            return None
 
-    def update_order_item_quantity(self, item_id: int, new_quantity: int) -> Optional[OrderItem]:
-        item = self.get_order_item_by_id(item_id)
-        if item:
-            item.quantity = new_quantity
-            item.subtotal = (item.price or 0) * new_quantity
-            self.db.commit()
-            self.db.refresh(item)
-            return item
-        return None
+        return OrderItem(**row) if parse_object else dict(row)
+    
+    def create_order_items_bulk(self, 
+                                order_items: List[dict], 
+                                parse_object: bool = True
+    ) -> List[OrderItem] | List[dict[str, Any]] | None:
+        if not order_items:
+            return []
 
-    def delete_items_item_id(self,
-                             item_id: int,
-    ) -> bool:
-        item = self.get_order_item_by_id(
-            item_id=item_id
-        )
-        if item:
-            self.db.delete(item)
-            self.db.commit()
-            return True
-        return False
+        sql = text("""
+            WITH inserted_items AS (
+                INSERT INTO order_items (order_id, product_id, sku, quantity, price, subtotal)
+                VALUES (:order_id, :product_id, :sku, :quantity, :price, :subtotal)
+                RETURNING *
+            )
+            SELECT
+                ii.*,
+                pd.product_name,
+                pr.variance_description AS variance_name
+            FROM inserted_items ii
+            LEFT JOIN product_description pd ON ii.product_id = pd.product_id
+            LEFT JOIN pricing pr ON ii.sku = pr.sku
+        """)
+
+        result = self.db.execute(sql, order_items)
+        self.db.commit()
+        rows = result.mappings().all()
+        
+        if not rows:
+            return None
+        return [OrderItem(**row) for row in rows] if parse_object else [dict(row) for row in rows]
+
+    def get_order_item_by_id(self, 
+                             item_id: int, 
+                             parse_object: bool = True
+    ) -> OrderItem | dict[str, Any] | None:
+        sql = text("""
+            SELECT *
+            FROM order_items
+            WHERE id = :item_id
+            LIMIT 1
+        """)
+
+        params = {"item_id": item_id}
+
+        result = self.db.execute(sql, params)
+        row = result.mappings().first()
+        
+        if not row:
+            return None
+
+        return OrderItem(**row) if parse_object else dict(row)
+
+    def get_items_by_order_id(self, 
+                              order_id: int, 
+                              parse_object: bool = True
+    ) -> List[OrderItem] | List[dict[str, Any]] | None:
+        sql = text("""
+            SELECT *
+            FROM order_items
+            WHERE order_id = :order_id
+            ORDER BY id
+        """)
+
+        params = {"order_id": order_id}
+
+        result = self.db.execute(sql, params)
+        rows = result.mappings().all()
+        
+        if not rows:
+            return None
+
+        return [OrderItem(**row) for row in rows] if parse_object else [dict(row) for row in rows]
+    
+    def update_order_item_quantity(self, 
+                                   item_id: int, 
+                                   new_quantity: int, 
+                                   parse_object: bool = True
+    ) -> OrderItem | dict[str, Any] | None:
+        sql = text("""
+            UPDATE order_items
+            SET quantity = :new_quantity,
+            WHERE id = :item_id
+            RETURNING *
+        """)
+
+        params = {
+            "item_id": item_id,
+            "new_quantity": new_quantity
+        }
+
+        result = self.db.execute(sql, params)
+        self.db.commit()
+        row = result.mappings().first()
+
+        if not row:
+            return None
+
+        return OrderItem(**row) if parse_object else dict(row)
 
     def delete_order_item(self, item_id: int) -> bool:
-        item = self.get_order_item_by_id(item_id)
-        if item:
-            self.db.delete(item)
-            self.db.commit()
-            return True
-        return False
+        sql = text("""
+            DELETE FROM order_items
+            WHERE id = :item_id
+            RETURNING 1
+        """)
+        
+        params = {"item_id": item_id}
+        res = self.db.execute(sql, params)
+        self.db.commit()
+        
+        return res.fetchone() is not None
 
     # ------------------ PRODUCT DESCRIPTION ------------------ #
-
-    def create_product(self, product_id: int, product_name: str,
+    
+    def create_product(self, 
+                       product_name: str,
                        brief_description: Optional[str] = None,
-                       description: Optional[str] = None) -> ProductDescription:
-        product = ProductDescription(
-            product_id=product_id,
-            product_name=product_name,
-            brief_description=brief_description,
-            description=description
-        )
-        self.db.add(product)
+                       description: Optional[str] = None,
+                       parse_object: bool = True
+    ) -> ProductDescription | dict[str, Any] | None:
+    
+        sql = text("""
+            INSERT INTO product_descriptions (product_name, brief_description, description)
+            VALUES (:product_name, :brief_description, :description)
+            RETURNING *
+        """)
+
+        params = {
+            "product_name": product_name,
+            "brief_description": brief_description,
+            "description": description
+        }
+
+        result = self.db.execute(sql, params)
         self.db.commit()
-        self.db.refresh(product)
-        return product
+        row = result.mappings().first()
+        
+        if not row:
+            return None
+        
+        return ProductDescription(**row) if parse_object else dict(row)
+    
+    def get_product_by_id(self, 
+                          product_id: int, 
+                          parse_object: bool = True
+    ) -> ProductDescription | dict[str, Any] | None:
+        sql = text("""
+            SELECT *
+            FROM product_descriptions
+            WHERE product_id = :product_id
+            LIMIT 1
+        """)
 
-    def get_product_by_id(self, product_id: int) -> Optional[ProductDescription]:
-        return self.db.query(ProductDescription).filter(ProductDescription.product_id == product_id).first()
+        params = {"product_id": product_id}
 
-    def get_all_products(self):
-        return self.db.query(ProductDescription).all()
+        result = self.db.execute(sql, params)
+        row = result.mappings().first()
+
+        if not row:
+            return None
+        
+        return ProductDescription(**row) if parse_object else dict(row)
+    
+    def get_all_products(self, 
+                         parse_object: bool = True
+    ) -> List[ProductDescription] | List[dict[str, Any]] | None:
+        sql = text("""
+            SELECT *
+            FROM product_descriptions
+            ORDER BY product_id
+        """)
+
+        result = self.db.execute(sql)
+        rows = result.mappings().all()
+        
+        if not rows:
+            return None
+        
+        return [ProductDescription(**row) for row in rows] if parse_object else [dict(row) for row in rows]
 
     def delete_product_by_id(self, product_id: int) -> bool:
-        product = self.get_product_by_id(product_id)
-        if product:
-            self.db.delete(product)
-            self.db.commit()
-            return True
-        return False
+        sql = text("""
+            DELETE FROM product_descriptions
+            WHERE product_id = :product_id
+            RETURNING 1
+        """)
+
+        params = {"product_id": product_id}
+        res = self.db.execute(sql, params)
+        self.db.commit()
+
+        return res.fetchone() is not None
 
     # ------------------ PRICING ------------------ #
 
-    def create_pricing(self, product_id: int, sku: str,
+    def create_pricing(self, 
+                       product_id: int, 
+                       sku: str,
                        variance_description: Optional[str] = None,
-                       price: Optional[int] = None) -> Pricing:
-        pricing = Pricing(
-            product_id=product_id,
-            sku=sku,
-            variance_description=variance_description,
-            price=price
-        )
-        self.db.add(pricing)
-        self.db.commit()
-        self.db.refresh(pricing)
-        return pricing
-
-    def get_pricing_by_sku(self, sku: str) -> Optional[Pricing]:
-        return self.db.query(Pricing).filter(Pricing.sku == sku).first()
-
-    def get_all_pricings(self):
-        return self.db.query(Pricing).all()
+                       price: Optional[int] = None,
+                       parse_object: bool = True
+    ) -> Pricing | dict[str, Any] | None:
     
-    def decrease_inventory(self, order_items: List[OrderItem]):
-        try:
-            for item in order_items:
-                pricing_record = (
-                    self.db.query(Pricing)
-                    .filter(Pricing.sku == item.sku)
-                    .with_for_update()  
-                    .one_or_none()
-                )
-                if not pricing_record:
-                    continue
-                
-                if pricing_record:
-                    current_inventory = pricing_record.inventory or 0
-                    updated_inventory = current_inventory - item.quantity
+        sql = text("""
+            INSERT INTO pricings (product_id, sku, variance_description, price)
+            VALUES (:product_id, :sku, :variance_description, :price)
+            RETURNING *
+        """)
 
-                    if updated_inventory < 0:
-                        raise ValueError(
-                            f"Không đủ tồn kho cho SKU={item.sku}: "
-                            f"hiện còn {updated_inventory}, yêu cầu {item.quantity}"
-                        )
+        params = {
+            "product_id": product_id,
+            "sku": sku,
+            "variance_description": variance_description,
+            "price": price
+        }
 
-                    pricing_record.inventory = max(updated_inventory, 0)
+        result = self.db.execute(sql, params)
+        self.db.commit()
+        row = result.mappings().first()
+        
+        if not row:
+            return None
 
-            self.db.commit()
-        except (ValueError, SQLAlchemyError) as e:
-            self.db.rollback()
-            # Log exception tuỳ theo context của bạn
-            raise 
+        return Pricing(**row) if parse_object else dict(row)
+    
+    def get_pricing_by_sku(self, 
+                           sku: str, 
+                           parse_object: bool = True
+    ) -> Pricing | dict[str, Any] | None:
+        sql = text("""
+            SELECT *
+            FROM pricings
+            WHERE sku = :sku
+            LIMIT 1
+        """)
 
-    def update_pricing_price(self, sku: str, new_price: int) -> Optional[Pricing]:
-        pricing = self.get_pricing_by_sku(sku)
-        if pricing:
-            pricing.price = new_price
-            self.db.commit()
-            self.db.refresh(pricing)
-            return pricing
-        return None
+        params = {"sku": sku}
+
+        result = self.db.execute(sql, params)
+        row = result.mappings().first()
+
+        if not row:
+            return None
+
+        return Pricing(**row) if parse_object else dict(row)
+
+    def update_pricing_price(self, 
+                             sku: str, 
+                             new_price: int, 
+                             parse_object: bool = True
+    ) -> Pricing | dict[str, Any] | None:
+        sql = text("""
+            UPDATE pricings
+            SET price = :new_price
+            WHERE sku = :sku
+            RETURNING *
+        """)
+
+        params = {
+            "sku": sku,
+            "new_price": new_price
+        }
+
+        result = self.db.execute(sql, params)
+        self.db.commit()
+        row = result.mappings().first()
+
+        if not row:
+            return None
+
+        return Pricing(**row) if parse_object else dict(row)
 
     def delete_pricing_by_sku(self, sku: str) -> bool:
-        pricing = self.get_pricing_by_sku(sku)
-        if pricing:
-            self.db.delete(pricing)
-            self.db.commit()
-            return True
-        return False
+        sql = text("""
+            DELETE FROM pricings
+            WHERE sku = :sku
+            RETURNING 1
+        """)
 
-    # ------------------ INVENTORY ------------------ #
-
-    def create_inventory(self, sku: str, import_price: Optional[int] = None,
-                         wholesale_price: Optional[int] = None,
-                         inventory_quantity: Optional[int] = None,
-                         shelf: Optional[str] = None,
-                         shelf_code: Optional[str] = None) -> Inventory:
-        inventory = Inventory(
-            sku=sku,
-            import_price=import_price,
-            wholesale_price=wholesale_price,
-            inventory_quantity=inventory_quantity,
-            shelf=shelf,
-            shelf_code=shelf_code
-        )
-        self.db.add(inventory)
+        params = {"sku": sku}
+        res = self.db.execute(sql, params)
         self.db.commit()
-        self.db.refresh(inventory)
-        return inventory
 
-    def get_inventory_by_sku(self, sku: str) -> Optional[Inventory]:
-        return self.db.query(Inventory).filter(Inventory.sku == sku).first()
-
-    def get_all_inventory(self):
-        return self.db.query(Inventory).all()
-
-    def update_inventory_quantity(self, sku: str, quantity: int) -> Optional[Inventory]:
-        inventory = self.get_inventory_by_sku(sku)
-        if inventory:
-            inventory.inventory_quantity = quantity
-            self.db.commit()
-            self.db.refresh(inventory)
-            return inventory
-        return None
-
-    def delete_inventory_by_sku(self, sku: str) -> bool:
-        inventory = self.get_inventory_by_sku(sku)
-        if inventory:
-            self.db.delete(inventory)
-            self.db.commit()
-            return True
-        return False
-    
-    # ------------------ CART ------------------ #
-    
-    def create_cart(self,
-                    chat_id: Optional[str] = None,
-                    customer_name: Optional[str] = None,
-                    customer_phone: Optional[str] = None,
-                    address: Optional[str] = None,
-                    list_cart: Optional[dict] = None) -> Cart:
-        cart = Cart(
-            chat_id=chat_id,
-            customer_name=customer_name,
-            customer_phone=customer_phone,
-            address=address,
-            list_cart=list_cart
-        )
-        self.db.add(cart)
-        self.db.commit()
-        self.db.refresh(cart)
-        return cart
-
-    def get_cart_by_id(self, cart_id: int) -> Optional[Cart]:
-        return self.db.query(Cart).filter(Cart.id == cart_id).first()
-
-    def get_cart_by_chat_id(self, chat_id: str) -> List[Cart]:
-        return self.db.query(Cart).filter(Cart.chat_id == chat_id).all()
-
-    def get_all_carts(self) -> List[Cart]:
-        return self.db.query(Cart).all()
-
-    def update_cart(self,
-                    cart_id: int,
-                    customer_name: Optional[str] = None,
-                    customer_phone: Optional[str] = None,
-                    address: Optional[str] = None,
-                    list_cart: Optional[dict] = None) -> Optional[Cart]:
-        cart = self.get_cart_by_id(cart_id)
-        if cart:
-            if customer_name is not None:
-                cart.customer_name = customer_name
-            if customer_phone is not None:
-                cart.customer_phone = customer_phone
-            if address is not None:
-                cart.address = address
-            if list_cart is not None:
-                cart.list_cart = list_cart
-            self.db.commit()
-            self.db.refresh(cart)
-            return cart
-        return None
-
-    def delete_cart(self, cart_id: int) -> bool:
-        cart = self.get_cart_by_id(cart_id)
-        if cart:
-            self.db.delete(cart)
-            self.db.commit()
-            return True
-        return False
+        return res.fetchone() is not None

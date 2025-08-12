@@ -2,7 +2,7 @@ from langgraph.types import  Command
 from app.core.utils.class_parser import AgentToolResponse
 from app.core.utils.helper_function import get_chat_his
 from app.core.state import SellState
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from app.core.utils.graph_function import GraphFunction
 from langgraph.prebuilt import create_react_agent
 from app.core.cart_agent.cart_tools import (
@@ -15,7 +15,7 @@ from app.core.cart_agent.cart_prompts import cart_agent_system_prompt
 from app.core.model import llm_agent
 from typing import Literal
 
-class CarttNodes:
+class CartNodes:
     def __init__(self):
         self.create_cart_agent = create_react_agent(
             model=llm_agent,
@@ -31,12 +31,15 @@ class CarttNodes:
             state["messages"],
             start_offset=-10
         )
+        state["messages"].append(
+            HumanMessage(content=state["current_task"])
+        )
         tasks = state["tasks"]
         next_node = "__end__"
         update = {}
         
         response = self.create_cart_agent.invoke(state)
-        content = response["messages"][-1].content
+        content = response["messages"][-1].content[0]["text"]
         status = response["status"]
         
         if status == "asking":

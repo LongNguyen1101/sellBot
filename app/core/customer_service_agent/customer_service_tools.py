@@ -10,8 +10,6 @@ from langchain_core.messages import ToolMessage
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 
-
-
 @tool
 def get_qna_tool(
     state: Annotated[SellState, InjectedState],

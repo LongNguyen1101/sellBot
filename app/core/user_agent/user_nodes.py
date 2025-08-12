@@ -5,18 +5,22 @@ from langchain_core.messages import HumanMessage, AIMessage
 from app.core.model import llm
 from app.core.user_agent.user_prompts import split_and_rewrite_prompt
 from app.core.utils.class_parser import SplitRequestOutput
+from app.core.utils.helper_function import get_chat_his
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 from app.core.utils.class_parser import AgentToolResponse
 from app.core.utils.graph_function import graph_function
 
-def _get_or_create_customer(chat_id: int) -> Tuple[AgentToolResponse, dict]:
+def _get_or_create_customer(chat_id: int) ->dict:
     with session_scope() as sess:
         public_crud = PublicCRUD(sess)
-        tool_response: AgentToolResponse = {}
         update = {}
         
-        customer, note = graph_function.get_or_create_customer(chat_id, public_crud=public_crud)
+        customer, note = graph_function.get_or_create_customer(
+            chat_id=chat_id, 
+            public_crud=public_crud,
+            parse_object=False
+        )
         
         if note == "found":
             log = (
@@ -34,20 +38,14 @@ def _get_or_create_customer(chat_id: int) -> Tuple[AgentToolResponse, dict]:
                 "address":customer["address"],
                 "customer_id":customer["customer_id"]
             })
-            
-            tool_response["content"] = (
-                "Đã tìm thấy thông tin khách hàng.\n"
-            )
         else:
             update.update({
                 "customer_id": customer["customer_id"]
             })
             
-            tool_response["content"] = (
-                "Không có thông tin khách hàng, tạo mới khách.\n"
-            )
+            print("Không có thông tin khách hàng, tạo mới khách.\n")
             
-        return tool_response, update
+        return update
 
 class UserNodes:
     def __init__(self):
@@ -59,12 +57,9 @@ class UserNodes:
         customer_id = state["customer_id"]
         update = {}
         
-        tool_response: AgentToolResponse = {}
-        
         if not customer_id:
-            tool_response, new_update = _get_or_create_customer(chat_id=chat_id)
+            new_update = _get_or_create_customer(chat_id=chat_id)
             update.update(new_update)
-            print(f">>>> {tool_response["content"]}")
                 
         update["messages"] = [HumanMessage(content=user_input, name="user_input_node")]
         
@@ -76,13 +71,10 @@ class UserNodes:
     def planner_node(self, state: SellState) -> Command:
         update = {}
         user_input = state["user_input"]
-        chat_his = [
-            {
-                "type": chat.type,
-                "content": chat.content
-            }
-            for chat in state["messages"][-10:]
-        ]
+        chat_his = get_chat_his(
+            messages=state["messages"],
+            start_offset=-10
+        )
         orders = state.get("orders", [])
         cart = state.get("cart", [])
         seen_products = state.get("seen_products", [])

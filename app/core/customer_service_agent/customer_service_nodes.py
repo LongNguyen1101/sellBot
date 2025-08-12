@@ -2,9 +2,7 @@ from langgraph.types import Command
 from app.core.customer_service_agent.customer_service_promtps import customer_service_system_prompt
 from app.core.customer_service_agent.customer_service_tools import get_common_situation_tool, get_qna_tool
 from app.core.state import SellState
-from langchain_core.messages import AIMessage
-from app.core.utils.class_parser import AgentToolResponse
-from app.core.utils.graph_function import GraphFunction
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
 from app.core.model import llm_agent
 from typing import Literal
@@ -27,11 +25,14 @@ class CustomerServiceNodes:
             state["messages"],
             start_offset=-10
         )
+        state["messages"].append(
+            HumanMessage(content=state["current_task"])
+        )
         tasks = state["tasks"]
         next_node = "__end__"
         update = {}
         
-        response = self.create_cart_agent.invoke(state)
+        response = self.create_cart_agent.invoke(state)[0]["text"]
         content = response["messages"][-1].content
         status = response["status"]
         

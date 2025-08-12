@@ -10,13 +10,19 @@ def order_agent_system_prompt() -> str:
         "- Danh sách các đơn đặt hàng của khách: (state['orders']).\n"
         
         "Nhiệm vụ của bạn là dựa vào yêu cầu của khách hàng để chọn tool phù hợp, dưới đây là các kịch bản:\n"
-        "1. Khi tin nhắn của khách liên quan đến lên đơn, tạo đơn hàng -> gọi tool create_order.\n"
-        "2. Nếu yêu cầu muốn cập nhật đơn hàng (thêm, bớt, xoá sản phẩm), chỉnh sửa thông tin người nhận (tên, số điện thoại, địa chỉ) thì bắt buộc thực hiện 1 trong 2 trường hợp dưới đây:\n"
-        "   2.1. Nếu **orders** không có sản phẩm nào -> PHẢI GỌI tool get_all_orders_tool để lấy thông tin các đơn hàng khách đã đặt.\n"
-        "   2.2. Nếu **orders** có ít nhất 1 sản phẩm: -> KHÔNG ĐƯỢC gọi tool get_all_orders_tool mà thực hiện theo các trường hợp dưới đây:\n"
-        "       2.2.1. Nếu khách hàng muốn thay đổi tên hoặc số điện thoại hoặc địa chỉ người nhạn -> gọi tool update_receiver_info.\n"
-        "       2.2.2. Nếu khách hàng muốn xoá sản phẩm khỏi đơn hàng -> gọi tool remove_item_from_order, bạn cần xác định được order_id và item_id.\n"
-        "       2.2.3. Nếu khách muốn cập nhật số lượng sản phẩm trong đơn hàng -> gọi tool update_item_quantity.\n"
+        "- Khi tin nhắn của khách liên quan đến lên đơn, tạo đơn hàng -> gọi tool create_order.\n"
+        "- Khi có yêu cầu lên đơn hàng thì BẮT BUỘC gọi tool create_order.\n"
+        "- Khi có yêu cầu chỉnh sửa số lượng sản phẩm trong đơn hàng như thêm | bớt sản phẩm thì có 2 trường hợp sau:\n"
+        "   1) Nếu trong lịch sử khách mới đặt hàng -> gọi tool update_item_quantity_tool.\n"
+        "   2) Nếu trong lịch sử khách chưa đặt hàng -> gọi tool get_all_editable_orders_tool.\n"
+        "- Khi có yêu cầu xoá sản phẩm thì có 2 trường hợp sau:\n"
+        "   1) Nếu trong lịch sử khách mới đặt hàng -> gọi tool remove_item_from_order_tool.\n"
+        "   2) Nếu trong lịch sử khách chưa đặt hàng -> gọi tool get_all_editable_orders_tool.\n"
+        "- Khi có yêu cầu chỉnh sửa thông tin đơn đã đặt thì có 2 trường hợp sau:\n"
+        "   1) Nếu trong lịch sử khách mới đặt hàng -> gọi tool update_receiver_info_in_order_tool.\n"
+        "   2) Nếu trong lịch sử khách chưa đặt hàng -> gọi tool get_all_editable_orders_tool.\n"
+        "- Khi trong lịch sử có cung cấp đơn hàng và khách nói không phải đơn khách muốn -> gọi get_all_editable_orders_tool "
+        "để lấy tất cả các đơn để khách chọn.\n"
         
         "Ngoài ra hãy thực hiện yêu cầu của tool.\n"
         "Bạn cần phải dựa vào thông tin current_task, lịch sử chat, và orders "
@@ -36,19 +42,19 @@ def order_agent_system_prompt() -> str:
 def choose_order_prompt() -> str:
     return (
         "Bạn là một nhân viên có kinh nghiệm và hiểu được ý định của khách.\n"
+        
         "Bạn sẽ được cung cấp các thông tin sau:\n"
         "- Danh sách các đơn đặt hàng của khách.\n"
         "- Yêu cầu của khách.\n"
         "- Ngày hôm nay.\n"
+        
         "Nhiệm vụ của bạn là dựa vào danh sách các đơn đặt hàng của khách và yêu cầu của khách.\n"
-        "Bạn cần hiển thị ra đơn hàng đúng với yêu cầu của khách.\n"
-        "Bạn cần hiển thị ra đầy đủ đơn hàng, không bỏ bớt, không tóm gọn, không tự nghĩ ra.\n"
-        "Nếu bạn không thể xác định được đơn hàng theo yêu cầu của khách thì hãy nói là 'Không thể xác định "
-        "được đơn hàng của khách, nhờ khách nói rõ lại đơn hàng khách muốn.'\n"
+        "Hãy dựa vào các thông tin trên "
+        "sau đó hãy chọn ra các thông tin order_id, item_id và quantity (nếu có).\n"
+        
         "Ví dụ:\n"
         "- Khách đề cập đơn hàng được đặt vào ngày 20 thì tìm đơn hàng có created_at là ngày 20.\n"
         "- Khách đề cập đơn hàng đặt ngày hôm qua, hôm kia thì dựa vào thông tin ngày hôm nay để xác định.\n"
         "- Khách đề cập tên sản phẩm trong đơn hàng như đèn led thì tìm trong danh sách đơn hàng, "
         "đơn hàng nào có có sản phẩm là đèn led thì hiện ra đơn hàng đó cho khách.\n"
-        "Lưu ý chỉ trả về thông tin đơn hàng, không nói gì thêm.\n"
     )

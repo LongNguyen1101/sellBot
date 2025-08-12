@@ -38,6 +38,7 @@ class ProductChosen(TypedDict):
     product_name: Optional[str]
     variance_description: Optional[str]
     price: Optional[int]
+    quantity: int = 1
 
 class AddCart(TypedDict):
     product_id: int
@@ -50,14 +51,30 @@ class AddCart(TypedDict):
 class UpdateCart(TypedDict):
     key: Optional[str]
     update_quantity: Optional[int]
-
-class RemoveProduct(TypedDict):
-    product_id: Optional[int]
-    sku: Optional[str]
     
-class UpdateOrder(TypedDict):
-    command: str
-    order_id: int
+class OrderChosen(TypedDict):
+    order_id: Optional[int] = Field(
+        description=(
+            "Mã đơn hàng.\n"
+            "Nếu không thể xác định được đơn hàng mà khách chọn -> trả về None."
+        )
+    )
+    item_id: Optional[int] = Field(
+        description=(
+            "Mã sản phẩm của các sản phẩm trong đơn hàng tương ứng.\n"
+            "Trường order_items trong các đơn hàng chứa một danh sách các sản phẩm trong đơn hàng đó.\n"
+            "Mỗi sản phẩm đại diện bởi id, id đó chính là item_id cần tìm.\n"
+            "Nếu trường order_items của đơn hàng có order_id đó duy nhất 1 sản phẩm "
+            "thì mặc định item_id của sản phẩm đó.\n"
+            "Nếu không thể xác định được sản phẩm mà khách chọn -> trả về None."
+        )
+    )
+    quantity: Optional[int] = Field(
+        description=(
+            "Số lượng khách muốn thay đổi đối với sản phẩm có item_id và "
+            "trong đơn hàng có order_id tìm được ở trên.\n"
+            "Nếu không thể xác định được sản phẩm hoặc đơn hàng mà khách chọn -> trả về None.\n"
+            "Nếu không thể xác định được số lượng khách muốn thay đổi -> trả về None."
+        )
+    )
     
-class UpdateReceiverInfo(TypedDict):
-    order_id: int

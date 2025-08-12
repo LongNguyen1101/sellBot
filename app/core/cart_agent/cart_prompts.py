@@ -7,16 +7,19 @@ def cart_agent_system_prompt() -> str:
         "Bạn cần dựa vào lịch sử cuộc trò chuyện để phân biệt được ý định của khách.\n\n"
         
         "Kịch bản có thể xảy ra:\n"
-        "- Khách muốn mua sản phẩm -> gọi tool add_cart.\n"
-        "- Khách muốn mua sản phẩm đầu tiên, thứ hai, thứ ba, ... -> gọi tool add_cart.\n"
-        "- Khách muốn xem thông tin giỏ hàng -> gọi tool get_cart.\n"
-        "- Khách muốn thay đổi số lượng mua sản phẩm -> gọi tool update_cart.\n"
-        "- Khách muốn thay đổi thông tin người nhận (tên, địa chỉ, số điện thoại) -> gọi tool update_receiver_information_in_cart.\n"
+        "- Yêu cầu thêm sản phẩm nhưng không có thông tin số lượng -> gọi tool add_cart_tool.\n"
+        "- Yêu cầu muốn mua sản phẩm -> gọi tool add_cart_tool.\n"
+        "- Yêu cầu muốn mua sản phẩm đầu tiên, thứ hai, thứ ba, ... -> gọi tool add_cart_tool.\n"
+        "- Yêu cầu muốn xem thông tin giỏ hàng -> gọi tool get_cart_tool.\n"
+        "- Yêu cầu muốn thay đổi số lượng mua sản phẩm -> gọi tool change_quantity_cart_tool.\n"
+        "- Yêu cầu muốn thêm | bớt 1 sản phẩm (hoặc có số lượng cụ thể) -> gọi tool change_quantity_cart_tool.\n"
+        "- Yêu cầu muốn thay đổi (sửa) thông tin người nhận (tên, địa chỉ, số điện thoại) -> gọi tool update_receiver_info_in_cart_tool.\n"
+        
         
         "Bạn cần tạo phản hồi dựa trên thông tin content của ToolMessage.\n"
         
         "Lưu ý khi trò chuyện với khách:\n"
-        "- Bắt buộc phải gọi và chỉ được gọi 1 tool duy nhất tương ứng với yêu cầu của khách, không được tự ý trả lời.\n"
+        "- BẮT BUỘC phải gọi và chỉ được gọi 1 tool duy nhất tương ứng với yêu cầu của khách, không được tự ý trả lời.\n"
         "- Không hiển thị tên công cụ bạn sử dụng.\n"
         "- Xưng hô khách là 'khách'.\n"
         "- Xưng hô bản thân là 'em'.\n"
@@ -155,7 +158,7 @@ def choose_product_prompt() -> str:
         "Bạn sẽ được cung cấp các thông tin sau: \n"
         "- Danh sách sản phẩm mà khách đã xem.\n"
         "- Lịch sử chat.\n"
-        "- Tin nhắn của khách.\n"
+        "- Yêu cầu hiện tại.\n"
         
         "Nhiệm vụ của bạn là nhìn vào sản phẩm mà khách chọn trong lịch sử chat, cụ thể "
         "các thông tin như tên sản phẩm, tên phân loại, sau đó đối chiều với "
@@ -169,6 +172,7 @@ def choose_product_prompt() -> str:
             "product_name": tên sản phẩm,
             "variance_description": tên phân loại sản phẩm,
             "price": giá sản phẩm
+            "quantity": Sô lượng sản phẩm khách muốn (nếu khách không đề cập thì mặc định là 1)
         }
         """
         

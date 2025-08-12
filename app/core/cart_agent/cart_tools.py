@@ -1,13 +1,13 @@
 from langchain_core.tools import tool, InjectedToolCallId
 from app.core.cart_agent.cart_prompts import update_cart_prompt, choose_product_prompt
 from app.core.utils.graph_function import graph_function
-from app.core.model import llm
+from app.core.model import llm_tools
 from app.core.state import SellState
 from typing import Annotated, List, Literal, Optional, TypedDict
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from langchain_core.messages import ToolMessage
-from app.core.utils.helper_function import get_cart, add_cart, return_order
+from app.core.utils.helper_function import get_cart, add_cart, get_chat_his, return_order
 from app.core.utils.class_parser import (
     AgentToolResponse,
     ProductChosen,
@@ -18,7 +18,6 @@ from app.services.crud_public import PublicCRUD
 
 @tool
 def add_cart_tool(
-    
     state: Annotated[SellState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId]
     
@@ -30,18 +29,16 @@ def add_cart_tool(
         
         seen_products = state["seen_products"]
         current_task = state["current_task"]
-        cart = state["cart"].copy() # Work on a copy
         phone_number = state["phone_number"]
         name = state["name"]
         address = state["address"]
+        cart = state["cart"]
         
         if seen_products:
-            chat_histories = [
-                {
-                    "type": chat.type,
-                    "content": chat.content
-                } for chat in state["messages"][-5:]
-            ]
+            chat_histories = get_chat_his(
+                messages=state["messages"],
+                start_offset=-5
+            )
             
             messages = [
                 {"role": "system", "content": choose_product_prompt()},
@@ -53,14 +50,16 @@ def add_cart_tool(
                 )}
             ]
             
-            response = llm.with_structured_output(ProductChosen).invoke(messages)
+            response = llm_tools.with_structured_output(ProductChosen).invoke(messages)
             
             if response.get("product_id") is None:
-                tool_response["status"] = "asking"
-                tool_response["content"] = (
-                    "Không xác định được sản phẩm khách muốn hoặc không có sản phẩm nào đúng ý khách, "
-                    "hãy dựa vào câu nói của khách để trả lời cho phù hợp."
-                )
+                tool_response = {
+                    "status": "asking",
+                    "content": (
+                        "Không xác định được sản phẩm khách muốn hoặc không có sản phẩm nào đúng ý khách, "
+                        "hãy dựa vào câu nói của khách để trả lời cho phù hợp."
+                    )
+                }
             else:
                 key, value = add_cart(response)
                 cart.pop("place_holder", None)
@@ -68,27 +67,31 @@ def add_cart_tool(
                 update["cart"] = cart
                 cart_info = get_cart(cart, name, phone_number, address)
                 
-                tool_response["status"] = "finish"
-                tool_response["content"] = (
-                    "Nói xác nhận với khách đã chọn sản phẩm <bạn hãy tự điền>\n"
-                    "Không được nói đã thêm sản phẩm vào giỏ hàng hay đơn hàng.\n"
-                    "Sau đó liệt kê các sản phẩm của khách dưới đây đầy đủ, không được bỏ bớt hay tóm gọn thông tin nào:\n"
-                    f"{cart_info}\n\n"
-                    "Nếu thiếu thông tin (tên, địa chỉ, số điện thoại) nào thì nói khách cung cấp thông tin đó.\n"
-                    "Nếu đả đủ cả 3 thông tin thì hỏi khách có muốn lên đơn luôn không.\n"
-                )
+                tool_response = {
+                    "status": "finish",
+                    "content": (
+                        "Nói xác nhận với khách đã chọn sản phẩm <bạn hãy tự điền>\n"
+                        "Không được nói đã thêm sản phẩm vào giỏ hàng hay đơn hàng.\n"
+                        "Sau đó liệt kê các sản phẩm của khách dưới đây đầy đủ, không được bỏ bớt hay tóm gọn thông tin nào:\n"
+                        f"{cart_info}\n\n"
+                        "Nếu thiếu thông tin (tên, địa chỉ, số điện thoại) nào thì nói khách cung cấp thông tin đó.\n"
+                        "Nếu đả đủ cả 3 thông tin thì hỏi khách có muốn lên đơn luôn không.\n"
+                    )
+                }
         else:
-            tool_response["status"] = "asking"
-            tool_response["content"] = (
-                "Đây là số điện thoại của khách:\n"
-                f"{phone_number if phone_number else 'Không có số điện thoại'}.\n"
-                "Hãy thông báo và xin lỗi với khách là khách chưa xem sản phẩm nào nên không biết khách muốn "
-                "mua sản phẩm gì.\n"
-                "Thông báo cửa hàng bán các đồ điện tử thông minh trong nhà như "
-                "ổ cắm, công tắc, khóa cửa, đèn, rèm thông minh,..."
-                "Nếu không có thông tin số điện thoại của khách hàng thì hỏi khách để hỗ trợ tư vấn.\n"
-                "Nếu đã có số điện thoại của khách thì bỏ qua, không nói gì cả.\n"
-            )
+            tool_response = {
+                "status": "asking",
+                "content": (
+                    "Đây là số điện thoại của khách:\n"
+                    f"{phone_number if phone_number else 'Không có số điện thoại'}.\n"
+                    "Hãy thông báo và xin lỗi với khách là khách chưa xem sản phẩm nào nên không biết khách muốn "
+                    "mua sản phẩm gì.\n"
+                    "Thông báo cửa hàng bán các đồ điện tử thông minh trong nhà như "
+                    "ổ cắm, công tắc, khóa cửa, đèn, rèm thông minh,..."
+                    "Nếu không có thông tin số điện thoại của khách hàng thì hỏi khách để hỗ trợ tư vấn.\n"
+                    "Nếu đã có số điện thoại của khách thì bỏ qua, không nói gì cả.\n"
+                )
+            }
         
         update.update({
             "messages": [
@@ -187,9 +190,9 @@ def change_quantity_cart_tool(
             f"Đây là lịch sử chat: {chat_histories}."
         )}
     ]
-    result = llm.with_structured_output(UpdateCart).invoke(msg)
+    result = llm_tools.with_structured_output(UpdateCart).invoke(msg)
     key = result.get("key")
-    update_quantity = result.get("update_quantity")
+    update_quantity = int(result.get("update_quantity"))
 
     tool_response: AgentToolResponse = {}
     
@@ -198,20 +201,25 @@ def change_quantity_cart_tool(
             "status": "incomplete_info",
             "content": "Không xác định được sản phẩm khách muốn thay đổi, hỏi lại khách."
         }
+        
     elif update_quantity is None:
         tool_response = {
             "status": "incomplete_info",
             "content": "Không xác định được số lượng sản phẩm khách muốn thay đổi, hỏi lại khách."
         }
+        
     elif update_quantity >= 0:
         print(f">>>> Update quantity: {update_quantity}")
         if update_quantity == 0:
-            cart.pop(key, None) # Use pop with default to avoid KeyError
+            cart.pop(key, None)
             print(f">>>> Đã xoá sản phẩm {key}")
+            
         elif update_quantity > 0:
             if key in cart:
                 cart[key]["Số lượng"] = int(update_quantity)
                 cart[key]["Giá cuối cùng"] = int(update_quantity) * cart[key]["Giá sản phẩm"]
+            else:
+                raise KeyError(f">>>> Lỗi: {key} không có trong giỏ hàng\n")
         
         cart_info = get_cart(cart, name, phone_number, address)
         tool_response = {
@@ -219,7 +227,9 @@ def change_quantity_cart_tool(
             "content": (
                 "Đã sửa lại thông tin cho khách, xác nhận lại với khách thông tin vừa sửa.\n"
                 "Trả lại đầy đủ thông tin các sản phẩm cho khách, không được rút gọn:\n"
-                f"{cart_info}"
+                f"{cart_info}\n"
+                "Nếu danh sách trên rỗng thì nói khách hiện tại không có sản phẩm nào khách "
+                "muốn mua.\n"
             )
         }
     
@@ -264,7 +274,8 @@ def update_receiver_info_in_cart_tool(
                 customer_id=customer_id,
                 name=name,
                 phone_number=phone_number,
-                address=address
+                address=address,
+                parse_object=False
             )
             
             if update_receiver:
@@ -294,9 +305,9 @@ def update_receiver_info_in_cart_tool(
                 }
             
             update = {
-                "name": name if name else state["name"],
-                "phone_number": phone_number if phone_number else state["phone_number"],
-                "address": address if address else state["address"],
+                "name": update_receiver["name"],
+                "phone_number": update_receiver["phone_number"],
+                "address": update_receiver["address"],
                 "messages": [
                     ToolMessage(
                         content=tool_response["content"],

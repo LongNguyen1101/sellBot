@@ -1,4 +1,5 @@
 from typing import Any, Optional, Literal
+from app.core.utils.class_parser import ProductChosen
 from app.core.utils.graph_function import GraphFunction
 from app.core.state import SellState
 from app.models.normal_models import Order
@@ -42,7 +43,7 @@ def get_customer_info(state: SellState):
     except Exception as e:
         raise Exception(e)
     
-def return_order(order_info: Order, order_items: Any, order_id: int):
+def return_order(order_info: dict, order_items: list, order_id: int):
     try:
         content = f"Mã đơn hàng: {order_id}\n\n"
         index = 1
@@ -62,16 +63,16 @@ def return_order(order_info: Order, order_items: Any, order_id: int):
         
         content += (
             "Thông tin người nhận:\n"
-            f"Tên khách hàng: {order_info.receiver_name}\n"
-            f"Số điện thoại khách hàng: {order_info.receiver_phone_number}\n"
-            f"Địa chỉ khách hàng: {order_info.receiver_address}\n"
-            f"Phương thức thanh toán: {order_info.payment}\n"
-            f"Ngày tạo đơn: {order_info.created_at.strftime('%d-%m-%Y')}.\n\n"
+            f"Tên khách hàng: {order_info["receiver_name"]}\n"
+            f"Số điện thoại khách hàng: {order_info["receiver_phone_number"]}\n"
+            f"Địa chỉ khách hàng: {order_info["receiver_address"]}\n"
+            f"Phương thức thanh toán: {order_info["payment"]}\n"
+            f"Ngày tạo đơn: {order_info["created_at"].strftime('%d-%m-%Y')}.\n\n"
             
             "Giá trị đơn hàng:\n"
-            f"Tổng đơn hàng (chưa tính phí ship): {order_info.order_total} VNĐ\n"
-            f"Phí ship: {order_info.shipping_fee} VNĐ\n"
-            f"Tổng đơn hàng (đã bao gồm phí ship): {order_info.grand_total} VNĐ\n"
+            f"Tổng đơn hàng (chưa tính phí ship): {order_info["order_total"]} VNĐ\n"
+            f"Phí ship: {order_info["shipping_fee"]} VNĐ\n"
+            f"Tổng đơn hàng (đã bao gồm phí ship): {order_info["grand_total"]} VNĐ\n"
         )
         
         return content
@@ -121,7 +122,7 @@ def get_cart(cart: dict,
     
     return cart_item
 
-def add_cart(product: dict):
+def add_cart(product: ProductChosen):
     product_id = int(product["product_id"])
     sku = product["sku"]
     key = f"{product_id} - {sku}"
@@ -132,8 +133,8 @@ def add_cart(product: dict):
         "Tên sản phẩm": product["product_name"],
         "Tên phân loại": product["variance_description"],
         "Giá sản phẩm":  int(product["price"]),
-        "Số lượng": 1,
-        "Giá cuối cùng": int(product["price"])
+        "Số lượng": int(product["quantity"]),
+        "Giá cuối cùng": int(product["quantity"]) * int(product["price"]),
     }
     
     return key, value

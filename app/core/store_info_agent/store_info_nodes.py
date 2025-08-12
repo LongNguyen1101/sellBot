@@ -1,7 +1,6 @@
 from langgraph.types import Command
 from app.core.state import SellState
-from langchain_core.messages import AIMessage
-from app.core.utils.graph_function import graph_function
+from langchain_core.messages import AIMessage, HumanMessage
 from typing import Literal
 from app.core.model import llm_agent
 from app.core.store_info_agent.store_info_prompts import store_info_agent_prompt
@@ -18,6 +17,9 @@ class StoreInfoNodes:
             state["messages"],
             start_offset=-10
         )
+        state["messages"].append(
+            HumanMessage(content=state["current_task"])
+        )
         user_input = state["user_input"]
         tasks = state["tasks"]
         next_node = "__end__"
@@ -31,7 +33,7 @@ class StoreInfoNodes:
         ]
         
         response = self.llm.invoke(messages)
-        content = response.content
+        content = response.content[0]["text"]
         
         if len(tasks) > 0:
             next_node = "router_node"

@@ -19,7 +19,7 @@ def _order_agent_role_prompt() -> str:
         "Sử dụng agent này để thực hiện các query liên quan đến đặt hàng bao gồm: \n"
         "- Đặt hàng.\n"
         "- Lấy các đơn hàng thoã query của khách.\n"
-        "- Chỉnh sửa lại đơn hàng đã đặt.\n"
+        "- Chỉnh sửa lại số lượng của sản phẩm trong đơn hàng đã đặt.\n"
         "- Chỉnh sửa lại thông tin người nhận như tên, số điện thoại, địa chỉ của người nhận.\n"
     )
     
@@ -204,8 +204,12 @@ def split_and_rewrite_prompt() -> str:
                 2) cập nhật <yêu cầu của khách> trong đơn hàng
         - Nếu khách muốn sửa giỏ hàng (đổi tên, số điện thoại, địa chỉ hoặc thêm/xóa sản phẩm):
             - Nếu **cart** đã có dữ liệu -> bắt buộc tạo 1 sub_query: cập nhật đơn hàng với <yêu cầu của khách> trong giỏ hàng.  
+        - Nếu ĐÃ CÓ DANH SÁCH ĐƠN HÀNG CỦA KHÁCH và khách muốn chỉnh sửa lại đơn hàng đã đặt, có 3 trường hợp sau:
+            - Khách vừa chỉnh sửa số lượng sản phẩm đã mua và chỉnh sửa lại thông tin người nhận (tên | địa chỉ | số điện thoại) thì cần tách thành 2 sub_query có nội dung là cập nhật lại số lượng sản phẩm và cập nhật lại thông tin người nhận.
+            - Khách yêu cầu chỉnh sửa số lượng sản phẩm đã mua thì chỉ cần tách 1 sub_query là cập nhật lại số lượng sản phẩm.
+            - Khách yêu cầu chỉnh sửa lại thông tin người nhận (tên | địa chỉ | số điện thoại) thì chỉ cần 1 sub_query là cập nhật lại thông tin người nhận.
         """
-
+        
         
         "# Ví dụ:\n"
         """
