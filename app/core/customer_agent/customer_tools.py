@@ -109,10 +109,7 @@ def add_phone_name_address_tool(
                     tool_response = {
                         "status": "asking",
                         "content": (
-                            "Đây là các sản phẩm khách vừa xem:\n"
-                            f"{seen_products}\n\n"
-                            "Hãy liệt kê ra để khách chọn.\n"
-                            "Hỏi khách muốn mua sản phẩm nào"
+                            "Dựa vào lịch sử chat để trả lời lại phù hợp cho khách.\n"
                         )
                     }
                 else:

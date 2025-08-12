@@ -208,6 +208,10 @@ def split_and_rewrite_prompt() -> str:
             - Khách vừa chỉnh sửa số lượng sản phẩm đã mua và chỉnh sửa lại thông tin người nhận (tên | địa chỉ | số điện thoại) thì cần tách thành 2 sub_query có nội dung là cập nhật lại số lượng sản phẩm và cập nhật lại thông tin người nhận.
             - Khách yêu cầu chỉnh sửa số lượng sản phẩm đã mua thì chỉ cần tách 1 sub_query là cập nhật lại số lượng sản phẩm.
             - Khách yêu cầu chỉnh sửa lại thông tin người nhận (tên | địa chỉ | số điện thoại) thì chỉ cần 1 sub_query là cập nhật lại thông tin người nhận.
+        - Nếu khách cung cấp tên | địa chỉ | số điện thoại thì mặc định dựa vào lịch sử chat:
+            - Nếu trước đó khách đề cập sửa lại thông tin trong giỏ hàng, hoặc địa chỉ trước khi lên đơn thì tách thành sub_query với yêu cầu cập nhật <thông tin của khách> trong giỏ hàng và agent là "cart_agent"
+            - Nếu trước đó khách đề cập sửa lại thông tin của đơn hàng đã đặt thì tách thành sub_query với yêu cầu cập nhật <thông tin của khách> trong đơn hàng và agent là "order_agent"
+            - Nếu trước đó chatbot hỏi khách cung cấp các thông tin người nhận để lên đơn thì phải tách thành sub_query với yêu cầu thêm <thông tin của khách hàng> và agent là "customer_agent"
         """
         
         
