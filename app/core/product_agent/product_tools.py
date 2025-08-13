@@ -54,9 +54,10 @@ def _get_products(
             tool_response = {
                 "status": "asking",
                 "content": (
-                    "Đây là các sản phẩm, dựa vào yêu cầu của khách để chọn ra sản phẩm phù hợp nhất."
+                    "Đây là các sản phẩm tương tự:\n"
                     f"{show_products}"
-                    "Đây là các sản phẩm tương tự, và hỏi khách có muốn không."
+                    "Nếu có sản phẩm nào phù hợp với yêu cầu của khách, in chi tiết sản phẩm đó ra.\n"
+                    "Nếu không có sản phẩm nào phù hợp với yêu cầu của khách, in chi tiết tất cả các sản phẩm ra để khách chọn.\n"
                 )
             }
             seen_products = alternate_products

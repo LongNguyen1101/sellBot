@@ -188,6 +188,12 @@ def split_and_rewrite_prompt() -> str:
         "- Cần xác định query nào nên tách thành sub_query hoặc không, không tách thành "
         "các sub_query dư.\n"
         
+        "- Cần phân biệt được tên, số điện thoại và địa chỉ của khách:\n"
+        "   - Tên là các từ có in hoa chữ cái đầu tiên, nhưng một số khách hàng "
+        "sẽ không in hoa chữ cái đầu, bạn có thể tự in hoa cho khách.\n"
+        "   - Số điện thoại là một chuỗi số liên tiếp nhau, có thể chứa dầu cách hoặc không.\n"
+        "   - Địa chỉ thường có số - tên đường - tên phường - tên quận (nếu có) - tên thành phố - tên tỉnh (nếu có)\n"
+        
         "# LUẬT TÁCH QUERY\n"
         """
         - Nếu khách chọn sản phẩm từ seen_products thì tạo **1 sub_query: thêm sản phẩm <abc> vào giỏ hàng**.
@@ -212,6 +218,10 @@ def split_and_rewrite_prompt() -> str:
             - Nếu trước đó khách đề cập sửa lại thông tin trong giỏ hàng, hoặc địa chỉ trước khi lên đơn thì tách thành sub_query với yêu cầu cập nhật <thông tin của khách> trong giỏ hàng và agent là "cart_agent"
             - Nếu trước đó khách đề cập sửa lại thông tin của đơn hàng đã đặt thì tách thành sub_query với yêu cầu cập nhật <thông tin của khách> trong đơn hàng và agent là "order_agent"
             - Nếu trước đó chatbot hỏi khách cung cấp các thông tin người nhận để lên đơn thì phải tách thành sub_query với yêu cầu thêm <thông tin của khách hàng> và agent là "customer_agent"
+        - Khi khách sẽ không cung cấp đầy đủ các thông tin như trên (ví dụ 92 Yên Thế) thì vẫn chấp nhận đây là 1 địa chỉ hợp lệ và tạo **1 sub_query: Thêm địa chỉ của khách**.
+        - Nếu trước đó chatbot có đề cập xin số điện thoại của khách để hỗ trợ đặt hàng, và sau đó khách nhắn số điện thoại thì cần tách thành 2 sub_query:
+            1) thêm số điện thoại của khách - customer_agent
+            2) thêm <sản phẩm mà khách chọn> vào giỏ hàng - cart_agent
         """
         
         

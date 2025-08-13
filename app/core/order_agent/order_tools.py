@@ -650,7 +650,9 @@ def update_receiver_info_in_order_tool(
                 
                     found_order = llm_tools.with_structured_output(OrderChosen).invoke(messages)
 
-                    if not found_order["order_id"]:
+                    print(f">>>> found_order: {found_order}")
+                    
+                    if found_order.get("order_id", None) is None:
                         tool_response = {
                             "status": "incomplete_info",
                             "content": (

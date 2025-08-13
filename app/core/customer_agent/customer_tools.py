@@ -10,7 +10,6 @@ from langchain_core.messages import ToolMessage
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 
-
 @tool
 def add_phone_name_address_tool(
     phone_number: Annotated[Optional[str], "Phone number of customer"],
@@ -105,11 +104,22 @@ def add_phone_name_address_tool(
             else:
                 print(">>>> Khách chưa có hàng trong giỏ -> hỏi khách")
                 seen_products = state["seen_products"]
-                if seen_products:
+                
+                if len(seen_products) == 1:
+                    tasks = [
+                        {
+                            "id": 1,
+                            "agent": "cart_agent",
+                            "sub_query": f"Thêm vào giỏ hàng sản phẩm {seen_products[0]["product_name"]}"
+                        }
+                    ]
+                elif len(seen_products) > 1:
                     tool_response = {
-                        "status": "asking",
+                        "status": "finish",
                         "content": (
-                            "Dựa vào lịch sử chat để trả lời lại phù hợp cho khách.\n"
+                            "Đây là các sản phẩm khách đã xem:\n"
+                            f"{seen_products}\n"
+                            "Hỏi khách muốn mua sản phẩm nào.\n"
                         )
                     }
                 else:
