@@ -222,6 +222,7 @@ def split_and_rewrite_prompt() -> str:
         - Nếu trước đó chatbot có đề cập xin số điện thoại của khách để hỗ trợ đặt hàng, và sau đó khách nhắn số điện thoại thì cần tách thành 2 sub_query:
             1) thêm số điện thoại của khách - customer_agent
             2) thêm <sản phẩm mà khách chọn> vào giỏ hàng - cart_agent
+        - Nếu khách cung cấp tên hoặc địa chỉ hoặc cả hai và trước đó chatbot có trả về giỏ hàng cho khách nhưng thiếu thông tin thì tạo đúng **1 sub_query: thêm tên (hoặc địa chỉ) cho khách - customer_agent**
         """
         
         
