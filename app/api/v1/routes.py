@@ -7,7 +7,11 @@ from app.core.state import init_state
 from langchain_core.messages import AIMessage, HumanMessage
 from typing import Any
 import json
+from app.log.logger_config import setup_logging
+import logging
 
+setup_logging()
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 graph = build_graph()
@@ -30,9 +34,9 @@ async def chat(request: ChatRequest):
     state["user_input"] = request.user_input
     state["chat_id"] = request.chat_id
     
-    print(f">>>> Process messages: {request.user_input}")
-    print(f">>>> Chat id: {request.chat_id} | uuid: {request.uuid}")
-    print(f">>>> Current state: {state}")
+    logger.info(f">>>> Process messages: {request.user_input}")
+    logger.info(f">>>> Chat id: {request.chat_id} | uuid: {request.uuid}")
+    logger.info(f">>>> Current state: {state}")
     
     events = graph.stream(state, config=config)
     return StreamingResponse(

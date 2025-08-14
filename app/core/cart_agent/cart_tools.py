@@ -15,6 +15,11 @@ from app.core.utils.class_parser import (
 )
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 @tool
 def add_cart_tool(
@@ -35,6 +40,7 @@ def add_cart_tool(
         cart = state["cart"]
         
         if seen_products:
+            logger.info("Seen products có sản phẩm")
             chat_histories = get_chat_his(
                 messages=state["messages"],
                 start_offset=-5
@@ -51,8 +57,10 @@ def add_cart_tool(
             ]
             
             response = llm_tools.with_structured_output(ProductChosen).invoke(messages)
+            logger.info(f"Sản phẩm trả về: {response}")
             
             if response.get("product_id") is None:
+                logger.info(f"Không xác định được product_id")
                 tool_response = {
                     "status": "asking",
                     "content": (
@@ -61,6 +69,7 @@ def add_cart_tool(
                     )
                 }
             else:
+                logger.info(f"Xác định được product_id: {response["product_id"]}")
                 key, value = add_cart(response)
                 cart.pop("place_holder", None)
                 cart[key] = value
@@ -79,6 +88,7 @@ def add_cart_tool(
                     )
                 }
         else:
+            logger.info("Seen products không có sản phẩm")
             tool_response = {
                 "status": "asking",
                 "content": (
@@ -124,6 +134,8 @@ def get_cart_tool(
         tool_response: AgentToolResponse = {}
         
         if cart and "place_holder" not in cart:
+            logger.info("Giỏ hàng có sản phẩm")
+            
             cart_item = get_cart(cart, name, phone_number, address)
             tool_response = {
                 "status": "finish",
@@ -142,6 +154,8 @@ def get_cart_tool(
                 )
             }
         else:
+            logger.info("Giỏ hàng không có sản phẩm")
+            
             seen_products = state["seen_products"]
             tool_response = {
                 "status": "asking",
@@ -190,36 +204,44 @@ def change_quantity_cart_tool(
             f"Đây là lịch sử chat: {chat_histories}."
         )}
     ]
+    
     result = llm_tools.with_structured_output(UpdateCart).invoke(msg)
+    logger.info(f"Thông tin cập nhật số lượng trong giỏ hàng: {result}")
+    
     key = result.get("key")
     update_quantity = int(result.get("update_quantity"))
 
     tool_response: AgentToolResponse = {}
     
     if key is None:
+        logger.info("Không xác định được sản phẩm")
         tool_response = {
             "status": "incomplete_info",
             "content": "Không xác định được sản phẩm khách muốn thay đổi, hỏi lại khách."
         }
         
     elif update_quantity is None:
+        logger.info("Không xác định được số lượng khách muốn đổi")
         tool_response = {
             "status": "incomplete_info",
             "content": "Không xác định được số lượng sản phẩm khách muốn thay đổi, hỏi lại khách."
         }
         
     elif update_quantity >= 0:
-        print(f">>>> Update quantity: {update_quantity}")
+        logger.debug(f">>>> Update quantity: {update_quantity}")
         if update_quantity == 0:
+            logger.info("Số lượng cập nhật = 0 -> xoá sản phẩm")
             cart.pop(key, None)
-            print(f">>>> Đã xoá sản phẩm {key}")
+            logger.debug(f">>>> Đã xoá sản phẩm {key}")
             
         elif update_quantity > 0:
+            logger.info("Số lượng cập nhật > 0 -> cập nhật sản phẩm")
             if key in cart:
                 cart[key]["Số lượng"] = int(update_quantity)
                 cart[key]["Giá cuối cùng"] = int(update_quantity) * cart[key]["Giá sản phẩm"]
             else:
-                raise KeyError(f">>>> Lỗi: {key} không có trong giỏ hàng\n")
+                logger.error(f"Lỗi: {key} không có trong giỏ hàng")
+                raise KeyError()
         
         cart_info = get_cart(cart, name, phone_number, address)
         tool_response = {
@@ -269,6 +291,12 @@ def update_receiver_info_in_cart_tool(
             cart = state["cart"]
             tool_response: AgentToolResponse = {}
             
+            logger.info(
+                "Các thông tin của khách cần cập nhật: "
+                f"Tên: {name} | "
+                f"Số điện thoại {phone_number} | "
+                f"Địa chỉ {address}"
+            )
             update_receiver = graph_function.update_customer_info(
                 public_crud=public_crud,
                 customer_id=customer_id,
@@ -279,6 +307,7 @@ def update_receiver_info_in_cart_tool(
             )
             
             if update_receiver:
+                logger.info("Có thông tin trả về khi cập nhật khách")
                 tool_response["content"] = ""
                 if name is not None:
                     tool_response["content"] += f"Đã cập nhật tên của người nhận: {name}\n"
@@ -293,12 +322,14 @@ def update_receiver_info_in_cart_tool(
                     phone_number if phone_number else state["phone_number"], 
                     address if address else state["address"],
                 )
+                
                 tool_response["status"] = "finish"
                 tool_response["content"] += (
                     "Trả lại các sản phẩm cho khách, không được rút gọn, bỏ bớt hay tự bịa đặt thông tin:\n"
                     f"{cart_info}"
                 )
             else:
+                logger.error("Không có thông tin trả về khi cập nhật khách")
                 tool_response = {
                     "status": "error",
                     "content": "Đã có lỗi xảy ra trong quá trình cập nhật thông tin khách hàng. Xin lỗi khách và xin quý khách thử lại."

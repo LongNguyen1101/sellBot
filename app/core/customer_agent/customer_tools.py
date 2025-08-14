@@ -9,6 +9,12 @@ from langgraph.types import Command
 from langchain_core.messages import ToolMessage
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
+
 
 @tool
 def add_phone_name_address_tool(
@@ -53,7 +59,7 @@ def add_phone_name_address_tool(
                     
                 log = "Cập nhật thông tin cho khách hàng đã có sẵn."
             
-            print(
+            logger.info(
                 f">>>> {log}\n"
                 f"ID khách: {customer["customer_id"]}\n"
                 f"Tên: {customer["name"]}\n"
@@ -69,8 +75,9 @@ def add_phone_name_address_tool(
             }
             
             if cart and "place_holder" not in cart:
-                print(">>>> Khách có hàng trong giỏ -> lên đơn")
+                logger.info(">>>> Khách có hàng trong giỏ")
                 if all([customer["customer_id"], customer["name"], customer["phone_number"], customer["address"]]):
+                    logger.info(">>>> Khách có có đầy đủ thông tin -> lên đơn")
                     tasks = [
                         {
                             "id": 1,
@@ -89,6 +96,7 @@ def add_phone_name_address_tool(
                         )
                     }
                 else:
+                    logger.info(">>>> Thiếu thông tin khách -> hỏi khách")
                     tool_response = {
                         "status": "incomplete_info",
                         "content": (
@@ -102,10 +110,11 @@ def add_phone_name_address_tool(
                         )
                     }
             else:
-                print(">>>> Khách chưa có hàng trong giỏ -> hỏi khách")
+                logger.info("Khách chưa có hàng trong giỏ")
                 seen_products = state["seen_products"]
                 
                 if len(seen_products) == 1:
+                    logger.info("Khách đã xem 1 sản phẩm -> thêm vào giỏ hàng")
                     tasks = [
                         {
                             "id": 1,
@@ -114,6 +123,7 @@ def add_phone_name_address_tool(
                         }
                     ]
                 elif len(seen_products) > 1:
+                    logger.info("Khách đã xem nhiều sản phẩm -> hỏi khách")
                     tool_response = {
                         "status": "finish",
                         "content": (
@@ -123,6 +133,7 @@ def add_phone_name_address_tool(
                         )
                     }
                 else:
+                    logger.info("Khách chưa xem nhiều sản phẩm -> hỏi khách")
                     tool_response = {
                         "status": "asking",
                         "content":(

@@ -14,6 +14,11 @@ from langgraph.prebuilt import create_react_agent
 
 from app.core.model import llm_agent
 from app.core.utils.helper_function import get_chat_his
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 class OrderNodes:
     def __init__(self):
@@ -47,7 +52,7 @@ class OrderNodes:
             if len(response["tasks"]) > 0:
                 tasks = response["tasks"]
                 update["tasks"] = tasks
-                print(f">>>> Tasks sau khi được cập nhật: {tasks}")
+                logger.info(f"Tasks sau khi được cập nhật: {tasks}")
         
         if status == "asking":
             next_node = "__end__"
@@ -74,7 +79,7 @@ class OrderNodes:
            if response.get(key, None) is not None:
                update[key] = response[key]
                
-        print(f">>>> Update: {update}")
+        logger.info(f"Thông tin cập nhật: {update}")
         
         return Command(
             update=update,

@@ -7,6 +7,11 @@ from langgraph.prebuilt import create_react_agent
 from app.core.model import llm_agent
 from app.core.utils.helper_function import get_chat_his
 from typing import Literal
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 class CustomerNodes:
     def __init__(self):
@@ -38,7 +43,7 @@ class CustomerNodes:
         if response.get("tasks", None):
             tasks = response["tasks"]
             update["tasks"] = tasks
-            print(f">>>> Tasks sau khi được cập nhật: {tasks}")
+            logger.info(f"Tasks sau khi được cập nhật: {tasks}")
         
         if status == "asking":
             next_node = "__end__"
@@ -64,6 +69,8 @@ class CustomerNodes:
         for key in ["customer_id", "name", "phone_number", "address"]:
            if response.get(key, None) is not None:
                update[key] = response[key]
+               
+        logger.info(f"Thông tin cập nhật: {update}")
         
         return Command(
             update=update,

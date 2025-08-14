@@ -75,61 +75,46 @@ def split_and_rewrite_prompt() -> str:
         f"{_irrelevant_agent_role_prompt()}\n"
         f"{_store_info_agent_role_prompt()}\n"
         
-        "Mỗi query chỉ chạy được qua 1 agent như trên. Nhưng có trường hợp "
-        "1 query cần sự phối hợp của nhiều agent -> cần tách thành các sub_query "
-        "và mỗi sub_query sẽ chạy qua 1 agent như trên.\n"
-        
-        "Do các agent chỉ thiết kế theo single task (tức là mỗi agent sẽ có nhiều tools, "
-        "nhưng mỗi lần xử lý query của người dùng chỉ sử dụng được 1 tool duy nhất). "
-        "Vì vậy sẽ có những trường hợp cần sử dụng nhiều hơn 1 tool, do đó mới phát sinh nhu cầu break-down query ban đầu của khách hàng "
-        "thành các sub_query.\n"
-        
-        "Dưới đây là các trường hợp phức tạp, trong đó các agent phối hợp với nhau để thực hiện query của khách:\n"
-        "Thông tin chung:\n"
-        "- seen_products: là một danh sách các thông tin sản phẩm khách đã xem, "
-        "được lưu trong trạng thái của chatbot.\n"
-        "- cart: là giỏ hàng, chứa thông tin của các sản phẩm khách muốn mua.\n"
-        "- name: tên của người nhận.\n"
-        "- phone_number: số điện thoại của người nhận.\n"
-        "- address: địa chỉ của người nhận.\n"
-        "- orders: danh sách chứa các đơn hàng mà khách đã đặt.\n"
-        
         """
-        1. Thêm sản phẩm vào giỏ hàng
-            - Logic xử lý:
-                - Nếu seen_products chưa chứa sản phẩm → gọi product_agent để tìm & lưu vào seen_products
-                - Sau đó gọi cart_agent để thêm sản phẩm vào cart
-            - Nếu seen_products đã có sản phẩm, bỏ bước gọi product_agent.
-            - Nếu cart đã có sản phẩm, bỏ bước gọi cart_agent thêm.
+        # Agent routing & sub-query rules
 
-        2. Lên đơn hàng cho khách
-            - Logic xử lý:
-                - Đảm bảo sản phẩm có trong seen_products (nếu thiếu → gọi product_agent)
-                - Đảm bảo sản phẩm đang nằm trong cart (nếu thiếu → gọi cart_agent)
-                - Cuối cùng gọi order_agent để tạo đơn
-            - Giảm bớt các bước nếu sản phẩm đã có trong seen_products và cart.
+        **Mỗi query chỉ chạy qua 1 agent.** Nếu một query cần phối hợp nhiều agent, **tách thành các `sub_query`**, mỗi `sub_query` chạy qua **1 agent**.  
+        **Lưu ý:** agents theo kiểu *single-task* — một agent có nhiều tools nhưng **mỗi lần xử lý 1 sub_query chỉ dùng 1 tool**. Khi cần >1 tool thì phải break-down query thành sub_query.
 
-        3. Sửa giỏ hàng: thay đổi số lượng hoặc xóa sản phẩm
-            - Logic xử lý:
-                - Giống việc lên đơn: cần gọi product_agent nếu seen_products chưa có, gọi cart_agent nếu cart chưa chứa sản phẩm
-                - Sau đó gọi cart_agent để cập nhật số lượng hoặc xóa sản phẩm
+        ## Thông tin chung
+        - `seen_products`: danh sách sản phẩm khách đã xem  
+        - `cart`: giỏ hàng  
+        - `name`, `phone_number`, `address`: thông tin nhận hàng  
+        - `orders`: danh sách đơn đã đặt
 
-        4. Sửa thông tin nhận hàng (tên, số điện thoại, địa chỉ)
-            - Logic xử lý:
-                - Nếu không có name, phone_number, address trong trạng thái → gọi customer_agent để lấy
-                - Sau đó gọi cart_agent để cập nhật thông tin trong cart
+        ## Trường hợp & logic
 
-        5. Sửa đơn hàng đã đặt: thay đổi số lượng hoặc xóa sản phẩm
-            - Logic xử lý:
-                - Nếu chưa có dữ liệu đơn hàng (orders) → gọi order_agent để lấy
-                - Nếu đã có dữ liệu đơn hàng (orders) -> không được gọi order_agent lấy đơn
-                - Sau đó gọi order_agent để cập nhật số lượng hoặc xóa sản phẩm trong đơn
+        ### 1. Thêm sản phẩm vào giỏ hàng
+        - Nếu product **không** có trong `seen_products` → gọi `product_agent` lấy & lưu vào `seen_products`.  
+        - Nếu product **không** có trong `cart` → gọi `cart_agent` thêm.  
+        - Nếu đã có trong `seen_products` hoặc `cart` → bỏ bước tương ứng.
 
-        6. Sửa thông tin nhận hàng trong đơn đã đặt
-            - Logic xử lý:
-                - Nếu chưa có dữ liệu đơn hàng (orders) → gọi order_agent lấy đơn
-                - Nếu đã có dữ liệu đơn hàng (orders) -> không được gọi order_agent lấy đơn
-                - Sau đó tiếp tục gọi order_agent để cập nhật name/phone_number/address
+        ### 2. Lên đơn (tạo order)
+        - Đảm bảo product có trong `seen_products`. Nếu thiếu → gọi `product_agent`.  
+        - Đảm bảo product có trong `cart`. Nếu thiếu → gọi `cart_agent`.  
+        - Gọi `order_agent` để tạo đơn.  
+        - Loại bỏ các bước đã đủ điều kiện.
+
+        ### 3. Sửa giỏ hàng (thay số lượng / xóa sản phẩm)
+        - Đảm bảo `seen_products` và `cart`: nếu thiếu → gọi `product_agent` hoặc `cart_agent`.  
+        - Gọi `cart_agent` để cập nhật số lượng hoặc xóa.
+
+        ### 4. Sửa thông tin nhận hàng (`name` / `phone_number` / `address`)
+        - Nếu thiếu thông tin trong state → gọi `customer_agent` lấy.  
+        - Gọi `cart_agent` để cập nhật thông tin vào `cart`.
+
+        ### 5. Sửa đơn đã đặt (thay số lượng / xóa sản phẩm)
+        - Nếu `orders` chưa có → gọi `order_agent` lấy. (Nếu đã có thì **không** gọi lại.)  
+        - Gọi `order_agent` để cập nhật/xóa trong order.
+
+        ### 6. Sửa thông tin nhận hàng trong đơn
+        - Nếu `orders` chưa có → gọi `order_agent` lấy. (Nếu đã có thì **không** gọi lại.)  
+        - Gọi `order_agent` để cập nhật `name` / `phone_number` / `address`.
         """
         
         "# Nhiệm vụ:\n"
@@ -194,37 +179,63 @@ def split_and_rewrite_prompt() -> str:
         "   - Số điện thoại là một chuỗi số liên tiếp nhau, có thể chứa dầu cách hoặc không.\n"
         "   - Địa chỉ thường có số - tên đường - tên phường - tên quận (nếu có) - tên thành phố - tên tỉnh (nếu có)\n"
         
+        
         "# LUẬT TÁCH QUERY\n"
         """
-        - Nếu khách chọn sản phẩm từ seen_products thì tạo **1 sub_query: thêm sản phẩm <abc> vào giỏ hàng**.
-        - Nếu khách nói 'lên đơn' thì chỉ tạo **1 sub_query: lên đơn hàng**.
-        - Nếu khách nói “mua <sản phẩm>”:
-            - Nếu sản phẩm chưa có trong seen_products -> tạo 2 sub_query:  
-                1) tìm sản phẩm <tên sản phẩm> (product_agent)  
-                2) thêm sản phẩm <tên sản phẩm> vào giỏ hàng (cart_agent)  
-            - Nếu đã có trong seen_products -> chỉ tạo 1 sub_query: thêm sản phẩm <tên sản phẩm> vào giỏ hàng.
-        - Nếu khách muốn sửa đơn đã đặt (đổi tên, số điện thoại, địa chỉ hoặc thêm/xóa sản phẩm):
-            - Nếu **orders** đã có dữ liệu -> bắt buộc tạo 1 sub_query: cập nhật đơn hàng với <yêu cầu của khách>.  
-            - Nếu **orders** chưa có dữ liệu -> tạo 2 sub_query:  
-                1) lấy các đơn hàng hiện tại
-                2) cập nhật <yêu cầu của khách> trong đơn hàng
-        - Nếu khách muốn sửa giỏ hàng (đổi tên, số điện thoại, địa chỉ hoặc thêm/xóa sản phẩm):
-            - Nếu **cart** đã có dữ liệu -> bắt buộc tạo 1 sub_query: cập nhật đơn hàng với <yêu cầu của khách> trong giỏ hàng.  
-        - Nếu ĐÃ CÓ DANH SÁCH ĐƠN HÀNG CỦA KHÁCH và khách muốn chỉnh sửa lại đơn hàng đã đặt, có 3 trường hợp sau:
-            - Khách vừa chỉnh sửa số lượng sản phẩm đã mua và chỉnh sửa lại thông tin người nhận (tên | địa chỉ | số điện thoại) thì cần tách thành 2 sub_query có nội dung là cập nhật lại số lượng sản phẩm và cập nhật lại thông tin người nhận.
-            - Khách yêu cầu chỉnh sửa số lượng sản phẩm đã mua thì chỉ cần tách 1 sub_query là cập nhật lại số lượng sản phẩm.
-            - Khách yêu cầu chỉnh sửa lại thông tin người nhận (tên | địa chỉ | số điện thoại) thì chỉ cần 1 sub_query là cập nhật lại thông tin người nhận.
-        - Nếu khách cung cấp tên | địa chỉ | số điện thoại thì mặc định dựa vào lịch sử chat:
-            - Nếu trước đó khách đề cập sửa lại thông tin trong giỏ hàng, hoặc địa chỉ trước khi lên đơn thì tách thành sub_query với yêu cầu cập nhật <thông tin của khách> trong giỏ hàng và agent là "cart_agent"
-            - Nếu trước đó khách đề cập sửa lại thông tin của đơn hàng đã đặt thì tách thành sub_query với yêu cầu cập nhật <thông tin của khách> trong đơn hàng và agent là "order_agent"
-            - Nếu trước đó chatbot hỏi khách cung cấp các thông tin người nhận để lên đơn thì phải tách thành sub_query với yêu cầu thêm <thông tin của khách hàng> và agent là "customer_agent"
-        - Khi khách sẽ không cung cấp đầy đủ các thông tin như trên (ví dụ 92 Yên Thế) thì vẫn chấp nhận đây là 1 địa chỉ hợp lệ và tạo **1 sub_query: Thêm địa chỉ của khách**.
-        - Nếu trước đó chatbot có đề cập xin số điện thoại của khách để hỗ trợ đặt hàng, và sau đó khách nhắn số điện thoại thì cần tách thành 2 sub_query:
-            1) thêm số điện thoại của khách - customer_agent
-            2) thêm <sản phẩm mà khách chọn> vào giỏ hàng - cart_agent
-        - Nếu khách cung cấp tên hoặc địa chỉ hoặc cả hai và trước đó chatbot có trả về giỏ hàng cho khách nhưng thiếu thông tin thì tạo đúng **1 sub_query: thêm tên (hoặc địa chỉ) cho khách - customer_agent**
+        ### A. Người dùng chọn sản phẩm từ `seen_products`
+        - Tạo **1 sub_query**: *thêm sản phẩm `<abc>` vào giỏ hàng* → `cart_agent`.
+
+        ### B. Người dùng nói `"mua <sản phẩm>"`
+        - Nếu `<sản phẩm>` **chưa có** trong `seen_products` → tạo **2 sub_query** (tuần tự):
+          1. Tìm sản phẩm `<tên sản phẩm>` → `product_agent` (lưu vào `seen_products`)  
+          2. Thêm sản phẩm `<tên sản phẩm>` vào giỏ hàng → `cart_agent`
+        - Nếu `<sản phẩm>` **đã có** trong `seen_products` → tạo **1 sub_query**:
+          - Thêm sản phẩm `<tên sản phẩm>` vào giỏ hàng → `cart_agent`
+
+        ### C. Người dùng nói `"lên đơn"`
+        - Tạo **1 sub_query**: *lên đơn hàng* → `order_agent` (giả sử các bước kiểm tra/thiếu thông tin được xử lý ở mức cao hơn)
+
+        ## Sửa giỏ hàng (thay số lượng / xóa / cập nhật thông tin liên quan)
+        - Nếu **cart** đã có dữ liệu → tạo **1 sub_query**: cập nhật yêu cầu của khách trong **giỏ hàng** → `cart_agent`.  
+        - Nếu thao tác liên quan sản phẩm mà `seen_products` chưa có → trước khi cập nhật phải tạo sub_query gọi `product_agent` để lấy product (theo quy tắc chung).
+
+        ## Sửa đơn đã đặt (thay số lượng / xóa / cập nhật thông tin người nhận)
+        ### 1) Khi **orders đã có dữ liệu**
+        - Bắt buộc tạo **1 hoặc nhiều sub_query** cập nhật trực tiếp trên đơn:
+          - Nếu khách vừa sửa **số lượng** và **thông tin người nhận** → tách **2 sub_query**:
+            1. Cập nhật số lượng → `order_agent`  
+            2. Cập nhật thông tin người nhận (tên | địa chỉ | số điện thoại) → `order_agent`
+          - Nếu chỉ sửa **số lượng** → 1 sub_query: cập nhật số lượng → `order_agent`
+          - Nếu chỉ sửa **thông tin người nhận** → 1 sub_query: cập nhật thông tin người nhận → `order_agent`
+
+        ### 2) Khi **orders chưa có dữ liệu**
+        - Tạo **2 sub_query** (tuần tự):
+          1. Lấy các đơn hàng hiện tại → `order_agent`  
+          2. Cập nhật `<yêu cầu của khách>` trong đơn hàng → `order_agent`
+
+        ### 3) Trường hợp khách yêu cầu sửa thông tin người nhận của đơn nhưng **không cung cấp thông tin cần sửa**
+        - Chỉ tạo **1 sub_query**: lấy các đơn hàng cho khách → `order_agent`
+
+        ## Quy tắc xử lý khi người dùng cung cấp `name` / `phone_number` / `address`
+        - Dựa vào **ngữ cảnh cuộc hội thoại** trước đó:
+          - Nếu trước đó khách đề cập **sửa giỏ hàng** (hoặc sửa địa chỉ trước khi lên đơn) → tạo **1 sub_query**: cập nhật `<thông tin>` trong **giỏ hàng** → `cart_agent`
+          - Nếu trước đó khách đề cập **sửa đơn đã đặt** → tạo **1 sub_query**: cập nhật `<thông tin>` trong **đơn hàng** → `order_agent`
+          - Nếu trước đó chatbot **hỏi cung cấp thông tin người nhận để lên đơn** → tạo **1 sub_query**: thêm `<thông tin khách>` → `customer_agent`
+          - Lưu ý nếu khách đưa tên hoặc địa chỉ thì đưa về đúng định dạng viết hoa chữ cái đầu mỗi từ.
+
+        ### Trường hợp đặc biệt về dữ liệu không đầy đủ
+        - Nếu khách cung cấp địa chỉ không đầy đủ (ví dụ `"92 Yên Thế"`) → vẫn chấp nhận là địa chỉ hợp lệ và tạo **1 sub_query**: *Thêm địa chỉ của khách* → (agent tương ứng là `customer_agent` theo ngữ cảnh).
+
+
+        ## Trường hợp kết hợp: khi trước đó chatbot đã hỏi số điện thoại để hỗ trợ đặt hàng
+        - Nếu user sau đó nhắn số điện thoại **và** đã chọn sản phẩm, thì **tạo 2 sub_query** (tuần tự):
+          1. Thêm số điện thoại của khách → `customer_agent`  
+          2. Thêm `<sản phẩm mà khách chọn>` vào giỏ hàng → `cart_agent`
+
+        ## Trường hợp khi chatbot đã trả về giỏ hàng nhưng thiếu thông tin
+        - Nếu khách cung cấp `name` hoặc `address` (hoặc cả hai) và trước đó giỏ hàng được trả về nhưng thiếu thông tin → tạo đúng **1 sub_query**:
+          - Thêm tên/địa chỉ cho khách → `customer_agent`
         """
-        
         
         "# Ví dụ:\n"
         """

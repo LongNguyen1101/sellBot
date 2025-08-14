@@ -9,6 +9,11 @@ from langchain_core.tools import tool, InjectedToolCallId
 from langchain_core.messages import ToolMessage
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 @tool
 def get_qna_tool(
@@ -32,7 +37,7 @@ def get_qna_tool(
                 } for data in documents
             ]
             
-            print(f">>> Contents: {contents}")
+            logger.info(f"Nội dung qna trả về: {contents}")
             
             tool_response = {
                 "status": "finish",
@@ -90,7 +95,7 @@ def get_common_situation_tool(
                 } for data in documents
             ]
             
-            print(f">>> Contents: {contents}")
+            logger.info(f"Nội dung common_situations trả về: {contents}")
             
             tool_response = {
                 "status": "finish",

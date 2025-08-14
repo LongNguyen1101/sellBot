@@ -10,6 +10,11 @@ from app.core.product_agent.product_tools import (
 from app.core.product_agent.product_prompts import product_agent_system_prompt
 from app.core.model import llm_agent
 from typing import Literal
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 class ProductNodes:
     def __init__(self):
@@ -35,13 +40,11 @@ class ProductNodes:
         update = {}
         
         response = self.create_product_agent.invoke(state)
-        print(f">>>> new response: {response}")
         content = response["messages"][-1].content[0]["text"]
         status = response["status"]
         
         if status == "asking":
             next_node = "__end__"
-            # Must ask the customer first, then create new subtasks depending on their answer
             tasks = []
         elif status == "finish":
             if len(tasks) > 0:
@@ -66,6 +69,8 @@ class ProductNodes:
         for key in ["cart", "seen_products", "name", "phone_number", "address", "customer_id"]:
            if response.get(key, None) is not None:
                update[key] = response[key]
+        
+        logger.info(f"Thông tin cập nhật: {update}")
         
         return Command(
             update=update,

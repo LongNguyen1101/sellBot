@@ -8,6 +8,11 @@ from langchain_core.messages import ToolMessage
 from app.core.utils.class_parser import AgentToolResponse
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 def _get_products(
@@ -22,9 +27,10 @@ def _get_products(
     )
     seen_products = products_found
     products_quantity = len(products_found)
+    logger.info(f"Số lượng sản phẩm trả về: {products_quantity}")
     
     if products_quantity == 1:
-        print(">>>> Sử dụng SQL")
+        logger.info("Sử dụng SQL")
         tool_response = {
             "status": "finish",
             "content": (
@@ -33,7 +39,7 @@ def _get_products(
             )
         }
     elif products_quantity > 1:
-        print(">>>> Sử dụng SQL")
+        logger.info("Sử dụng SQL")
         tool_response = {
             "status": "asking",
             "content": (
@@ -43,7 +49,7 @@ def _get_products(
             )
         }
     elif products_quantity == 0:
-        print(">>>> Sử dụng embedding")
+        logger.info("Sử dụng embedding")
         alternate_products, show_products = graph_function.get_product_embedding_info(
             public_crud=public_crud,
             user_input=user_input,
@@ -51,6 +57,7 @@ def _get_products(
         )
         
         if alternate_products:
+            logger.info(f"Lấy được các sản phẩm tương tự bằng embedding: {alternate_products}")
             tool_response = {
                 "status": "asking",
                 "content": (
@@ -62,6 +69,7 @@ def _get_products(
             }
             seen_products = alternate_products
         else:
+            logger.info("Không tìm thấy các sản phẩm tương tự bằng embedding")
             tool_response = {
                 "status": "asking",
                 "content": (
@@ -84,6 +92,8 @@ def get_products_tool(
             public_crud = PublicCRUD(sess)
             update = {}
             phone_number = state["phone_number"]
+            name = state["name"]
+            address = state["address"]
 
             tool_response, seen_products = _get_products(
                 keyword=keyword,
@@ -94,10 +104,22 @@ def get_products_tool(
             update["seen_products"] = seen_products
 
             if not phone_number:
+                logger.info("Khách chưa có số điện thoại -> xin khách")
                 tool_response["content"] += (
                     "Khách chưa có số điện thoại.\n"
                     "Xin khách số điện thoại để liên hệ tư vấn.\n"
                 )
+            else:
+                logger.info("Khách đã có số điện thoại")
+                tool_response["content"] += (
+                    "Khách đã có số điện thoại, không xin nữa.\n"
+                    "Đây là thông tin tên và địa chỉ của khách:\n"
+                    f"- Tên: {name}\n"
+                    f"- Địa chỉ: {address}\n"
+                    "Nếu thiếu thông tin nào thì hỏi khách.\n"
+                    "Nếu không thiếu thì nói khách có muốn mua không.\n"
+                )
+                
 
             update.update({
                 "messages": [
@@ -113,5 +135,5 @@ def get_products_tool(
             
     except Exception as e:
         # Log the exception for debugging
-        print(f">>>> An error occurred in get_products_tool: {e}")
+        logger.error(f"Có lỗi sảy ra: {e}")
         raise

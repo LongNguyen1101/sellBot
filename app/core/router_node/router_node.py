@@ -1,9 +1,11 @@
 from app.core.state import SellState
 from langgraph.types import Command
 from app.core.model import llm
-from app.core.utils.class_parser import Router
-from app.core.utils.helper_function import get_chat_his
+from app.log.logger_config import setup_logging
+import logging
 
+setup_logging()
+logger = logging.getLogger(__name__)
 
 MEMBERS = (["product_agent", "cart_agent", "order_agent", "customer_agent",
             "customer_service_agent", "irrelevant_agent", "store_info_agent"])
@@ -26,7 +28,7 @@ class RouterNodes:
             current_task = tasks[0]["sub_query"]
             next_node = tasks[0]["agent"]
             tasks.pop(0)
-            print(f">>>> Đang xử lý tasks: {current_task}")
+            logger.info(f"Đang xử lý tasks: {current_task}")
             
         return Command(
             update={

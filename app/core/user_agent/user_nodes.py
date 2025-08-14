@@ -10,6 +10,11 @@ from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 from app.core.utils.class_parser import AgentToolResponse
 from app.core.utils.graph_function import graph_function
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 def _get_or_create_customer(chat_id: int) ->dict:
     with session_scope() as sess:
@@ -24,14 +29,14 @@ def _get_or_create_customer(chat_id: int) ->dict:
         
         if note == "found":
             log = (
-                ">>>> Tìm thấy thông tin của khách:",
+                "Tìm thấy thông tin của khách:",
                 f"Tên: {customer["name"]}. "
                 f"Số điện thoại: {customer["phone_number"]}. "
                 f"Địa chỉ: {customer["address"]}. "
                 f"ID khách: {customer["customer_id"]}."
             )
             
-            print(log)
+            logger.info(log)
             update.update({
                 "name": customer["name"],
                 "phone_number":customer["phone_number"],
@@ -43,7 +48,7 @@ def _get_or_create_customer(chat_id: int) ->dict:
                 "customer_id": customer["customer_id"]
             })
             
-            print("Không có thông tin khách hàng, tạo mới khách.\n")
+            logger.info("Không có thông tin khách hàng, tạo mới khách.\n")
             
         return update
 
@@ -91,7 +96,7 @@ class UserNodes:
         ]
         
         response = self.llm.with_structured_output(SplitRequestOutput).invoke(messages)
-        print(f">>>> Tasks: {response["tasks"]}")
+        logger.info(f"Tasks: {response["tasks"]}")
         
         if len(response["tasks"]) > 1:
             content = "Dạ khách vui lòng đợi em một chút để em xử lý ạ.\n"

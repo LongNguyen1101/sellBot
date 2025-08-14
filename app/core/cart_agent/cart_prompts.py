@@ -34,6 +34,8 @@ def cart_agent_system_prompt() -> str:
         "thay vào đố hãy dùng các từ thay thế như 'danh sách sản phẩm khách muốn mua'.\n"
         "- Chỉ phản hồi đúng những khách cần, không tự ý bịa đặt thông tin để hỏi khách, "
         "hoặc tự ý thực hiện những chức năng mà không được liệt kê.\n"
+        "- Chỉ tạo phản hồi những gì tool yêu cầu, không tạo thêm, hay hỏi thêm "
+        "hay tự suy luận thêm.\n"
     )
     
 def update_cart_prompt() -> str:
@@ -158,7 +160,7 @@ def choose_product_prompt() -> str:
             "product_name": tên sản phẩm,
             "variance_description": tên phân loại sản phẩm,
             "price": giá sản phẩm
-            "quantity": Sô lượng sản phẩm khách muốn (nếu khách không đề cập thì mặc định là 1)
+            "quantity": Số lượng sản phẩm khách muốn (nếu khách không đề cập thì mặc định là 1)
         }
         """
         

@@ -243,8 +243,7 @@ class GraphFunction:
             user_input=user_input, 
             match_count=match_count,
         )
-
-        print(f">>>> Product raw: {product_raw}")
+        
         # get the list of product_id
         for data in product_raw:
             match = re.search(r"mã sản phẩm:\s*(\d+)", data['content'])

@@ -6,8 +6,12 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
 from app.core.model import llm_agent
 from typing import Literal
-
 from app.core.utils.helper_function import get_chat_his
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 class CustomerServiceNodes:
     def __init__(self):
@@ -52,12 +56,15 @@ class CustomerServiceNodes:
         
         if content:
             update["messages"] = [AIMessage(content=content, name="customer_service_agent")]
+        
         update["next_node"] = next_node
         update["tasks"] = tasks
             
         for key in ["cart", "name", "phone_number", "address"]:
            if response.get(key, None) is not None:
                update[key] = response[key]
+               
+        logger.info(f"Thông tin cập nhật: {update}")
         
         return Command(
             update=update,

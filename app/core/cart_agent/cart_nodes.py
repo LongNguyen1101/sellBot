@@ -14,6 +14,11 @@ from app.core.cart_agent.cart_tools import (
 from app.core.cart_agent.cart_prompts import cart_agent_system_prompt
 from app.core.model import llm_agent
 from typing import Literal
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 class CartNodes:
     def __init__(self):
@@ -66,6 +71,8 @@ class CartNodes:
         for key in ["cart", "name", "phone_number", "address"]:
            if response.get(key, None) is not None:
                update[key] = response[key]
+        
+        logger.info(f"Thông tin cập nhật: {update}")
         
         return Command(
             update=update,

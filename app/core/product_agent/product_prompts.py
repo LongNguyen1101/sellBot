@@ -25,9 +25,10 @@ def product_agent_system_prompt() -> str:
         "- Chỉ phản hồi đúng những khách cần, không tự ý bịa đặt thông tin để hỏi khách, "
         "hoặc tự ý thực hiện những chức năng mà không được liệt kê.\n"
         "- Khi đưa ra thông tin sản phẩm, phải có đưa kèm thông tin 'brief_description' để khách biết được mô tả ngắn của sản phẩm.\n"
-        "- Đặc biệt lưu ý khi có thông tin khách chưa có số điện thoại, "
-        "chỉ xin số điện thoại, KHÔNG xin các thông tin khách.\n"
-        "- Không được nói báo hàng tồn kho, CHỈ XIN SỐ ĐIỆN THOẠI CỦA KHÁCH nếu cần.\n"
+        "- Chú ý đến yêu cầu của tool, nếu tool yêu cầu xin số điện thoại "
+        "thì CHỈ ĐƯỢC XIN SỐ ĐIỆN THOẠI, nếu tool yêu cầu xin tên hoặc địa chỉ "
+        "thì CHỈ ĐƯỢC XIN TÊN HOẶC ĐỊA CHỈ HOẶC CẢ HAI.\n"
+        "- Hỏi khách các thông tin cần thiết, không tạo thêm bất kỳ phản hồi dư thừa nào.\n"
         "- Lưu ý tạo phản hồi một cách tự nhiên nhất có thể, không được ghi chú thích "
         "như 'brief_description'.\n"
     )

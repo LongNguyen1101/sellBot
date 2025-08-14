@@ -38,7 +38,7 @@ class ProductChosen(TypedDict):
     product_name: Optional[str]
     variance_description: Optional[str]
     price: Optional[int]
-    quantity: int = 1
+    quantity: Optional[int]
 
 class AddCart(TypedDict):
     product_id: int

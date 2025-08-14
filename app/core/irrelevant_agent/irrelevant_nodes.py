@@ -5,6 +5,11 @@ from langchain_core.messages import AIMessage, HumanMessage
 from typing import Literal
 from app.core.model import llm_agent
 from app.core.utils.helper_function import get_chat_his
+from app.log.logger_config import setup_logging
+import logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 class IrrelevantNodes:
     def __init__(self):
@@ -44,6 +49,8 @@ class IrrelevantNodes:
             "messages": [AIMessage(content=content, name="irrelevant_agent")],
             "next_node": next_node
         }
+        
+        logger.info(f"Thông tin cập nhật: {update}")
         
         return Command(
             update=update,

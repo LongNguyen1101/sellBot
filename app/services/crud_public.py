@@ -140,8 +140,6 @@ class PublicCRUD:
         self.db.commit()
         rows = result.mappings().all()
         
-        print(f">>>> rows: {rows}")
-        
         return [dict(row) for row in rows] if rows else None
     
     # ------------------ CUSTOMER ------------------ #
@@ -330,6 +328,7 @@ class PublicCRUD:
                        JSON_BUILD_OBJECT(
                          'id', oi.id,
                          'product_id', oi.product_id,
+                         'sku', pr.sku,
                          'quantity', oi.quantity,
                          'price', oi.price,
                          'subtotal', oi.subtotal,

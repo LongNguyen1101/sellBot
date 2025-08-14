@@ -67,7 +67,8 @@ def return_order(order_info: dict, order_items: list, order_id: int):
             f"Số điện thoại khách hàng: {order_info["receiver_phone_number"]}\n"
             f"Địa chỉ khách hàng: {order_info["receiver_address"]}\n"
             f"Phương thức thanh toán: {order_info["payment"]}\n"
-            f"Ngày tạo đơn: {order_info["created_at"].strftime('%d-%m-%Y')}.\n\n"
+            f"Ngày tạo đơn: {order_info["created_at"]}.\n"
+            f"Ngày cập nhật đơn: {order_info["updated_at"]}.\n\n"
             
             "Giá trị đơn hàng:\n"
             f"Tổng đơn hàng (chưa tính phí ship): {order_info["order_total"]} VNĐ\n"

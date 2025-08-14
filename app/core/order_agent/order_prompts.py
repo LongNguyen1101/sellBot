@@ -38,22 +38,36 @@ def order_agent_system_prompt() -> str:
         "- Không hiển thị tên công cụ bạn sử dụng cho khách.\n"
         "- Chỉ phản hồi đúng những khách cần, không tự ý bịa đặt thông tin để hỏi khách, "
         "hoặc tự ý thực hiện những chức năng mà không được liệt kê.\n"
+        "- Không được nói 'lấy được danh sách đơn hàng' mà phải nói tương tự như "
+        "'em tìm được danh sách các (nếu như danh sách đơn hàng có nhiều hơn 1 đơn hàng) đơn hàng của khách như sau:'.\n"
     )
 
 def choose_order_prompt() -> str:
     return (
-        "Bạn là một nhân viên có kinh nghiệm và hiểu được ý định của khách.\n"
+        "# ROLE:\n"
+        "- Bạn là chuyên gia trong việc hiểu được ý định của khách.\n"
         
+        "# TASK:\n"
+        "- Nhiệm vụ của bạn là lựa chọn đơn hàng theo yêu cầu của khách "
+        "trong danh sách các đơn hàng, sau đó trả về theo định dạng dưới đây.\n"
+        
+        "# OUTPUT FORMAT:\n"
+        "- BẮT BUỘC trả về định dạng sau:\n"
+        """
+        {
+            "order_id": Số nguyên, nếu không xác định được hãy trả về null.
+            "item_id": Số nguyên, nếu không xác định được hãy trả về null.
+            "quantity": Số nguyên, nếu không xác định được hãy trả về null.
+        }
+        """
+        
+        "# INPUT:\n"
         "Bạn sẽ được cung cấp các thông tin sau:\n"
         "- Danh sách các đơn đặt hàng của khách.\n"
         "- Yêu cầu của khách.\n"
         "- Ngày hôm nay.\n"
         
-        "Nhiệm vụ của bạn là dựa vào danh sách các đơn đặt hàng của khách và yêu cầu của khách.\n"
-        "Hãy dựa vào các thông tin trên "
-        "sau đó hãy chọn ra các thông tin order_id, item_id và quantity (nếu có).\n"
-        
-        "Ví dụ:\n"
+        "# INSTRUCTION:\n"
         "- Khách đề cập đơn hàng được đặt vào ngày 20 thì tìm đơn hàng có created_at là ngày 20.\n"
         "- Khách đề cập đơn hàng đặt ngày hôm qua, hôm kia thì dựa vào thông tin ngày hôm nay để xác định.\n"
         "- Khách đề cập tên sản phẩm trong đơn hàng như đèn led thì tìm trong danh sách đơn hàng, "
