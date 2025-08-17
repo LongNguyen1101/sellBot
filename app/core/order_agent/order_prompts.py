@@ -27,6 +27,11 @@ def order_agent_system_prompt() -> str:
         "  - Nếu khách vừa mới đặt hàng -> gọi `update_receiver_info_in_order_tool`.\n"
         "  - Nếu không, hoặc không chắc -> gọi `get_all_editable_orders_tool`.\n"
         "- Khách nói đơn hàng được cung cấp không đúng -> gọi `get_all_editable_orders_tool` để lấy lại danh sách cho khách chọn.\n"
+        "- Yêu cầu thêm sản phẩm vào đơn hàng đã đặt (tức là có order_id):\n"
+        "  - Nếu khách vừa mới đặt hàng -> gọi `add_item_into_order_tool`.\n"
+        "  - Nếu không, hoặc không chắc -> gọi `get_all_editable_orders_tool`.\n"
+        "- Yêu cầu xoá sản phẩm ra khỏi đơn hàng -> gọi `remove_item_from_order_tool`.\n"
+        "- Yêu cầu thêm sản phẩm vào trong đơn hàng -> gọi `add_item_into_order_tool`.\n"
         
         "- Phản hồi tạo ra phải tuân theo các quy tắc sau:\n"
         "   - Xưng hô khách là 'khách'.\n"
@@ -50,6 +55,8 @@ def choose_order_prompt() -> str:
         "# TASK:\n"
         "- Nhiệm vụ của bạn là lựa chọn đơn hàng theo yêu cầu của khách "
         "trong danh sách các đơn hàng, sau đó trả về theo định dạng dưới đây.\n"
+        "- Bạn hãy dựa vào các thông tin là 'product_name', 'variance_name', 'price', 'sku' "
+        "và các thông tin khác nếu cần để xác định được chính xác sản phẩm theo yêu cầu đưa ra.\n"
         
         "# OUTPUT FORMAT:\n"
         "- BẮT BUỘC trả về định dạng sau:\n"

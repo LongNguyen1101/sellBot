@@ -369,6 +369,7 @@ class PublicCRUD:
                        JSON_BUILD_OBJECT(
                          'id', oi.id,
                          'product_id', oi.product_id,
+                         'sku', pr.sku,
                          'quantity', oi.quantity,
                          'price', oi.price,
                          'subtotal', oi.subtotal,
@@ -509,11 +510,14 @@ class PublicCRUD:
     
     # ------------------ ORDERITEM ------------------ #
     
-    def create_order_item(self, order_id: int, product_id: int, sku: str,
-                      quantity: Optional[int] = None,
-                      price: Optional[int] = None,
-                      subtotal: Optional[int] = None,
-                      parse_object: bool = True
+    def create_order_item(self, 
+                          order_id: int, 
+                          product_id: int, 
+                          sku: str,
+                          quantity: Optional[int] = None,
+                          price: Optional[int] = None,
+                          subtotal: Optional[int] = None,
+                          parse_object: bool = True
     ) -> OrderItem | dict[str, Any] | None:
     
         sql = text("""

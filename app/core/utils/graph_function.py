@@ -1,3 +1,4 @@
+from operator import sub
 from app.models.normal_models import Customer, Order, OrderItem
 from app.services.crud_public import PublicCRUD
 from app.core.state import SellState
@@ -355,6 +356,26 @@ class GraphFunction:
                      public_crud: PublicCRUD,
     ):
         return public_crud.delete_order(order_id=order_id)
+    
+    def create_order_item(self,
+                          order_id: int, 
+                          product_id: int, 
+                          sku: str,
+                          public_crud: PublicCRUD,
+                          quantity: Optional[int] = None,
+                          price: Optional[int] = None,
+                          subtotal: Optional[int] = None,
+                          parse_object: bool = True
+    ):
+        return public_crud.create_order_item(
+            order_id=order_id,
+            product_id=product_id,
+            sku=sku,
+            quantity=quantity,
+            price=price,
+            subtotal=subtotal,
+            parse_object=parse_object
+        )
         
         
 # init

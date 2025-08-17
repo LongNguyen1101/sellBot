@@ -53,3 +53,6 @@ def build_graph() -> StateGraph:
     graph = builder.compile(checkpointer=memory)
     
     return graph
+
+# For testing langgraph studio only
+# graph = build_graph()

@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from app.api.v1.routes import router as api_router
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
 
 # Create a FastAPI app instance
 app = FastAPI(title="My FastAPI Project")
@@ -29,3 +31,12 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/")
 async def root():
     return {"message": "Welcome to selling bot"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+
+if __name__ == "__main__":
+    # This will only run if you execute the file directly
+    # Not when using langgraph dev
+    uvicorn.run(app, host="127.0.0.1", port=2024)

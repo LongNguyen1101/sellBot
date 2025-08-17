@@ -6,7 +6,8 @@ from app.core.order_agent.order_tools import (
     get_all_editable_orders_tool,
     update_item_quantity_tool,
     remove_item_from_order_tool,
-    update_receiver_info_in_order_tool
+    update_receiver_info_in_order_tool,
+    add_item_into_order_tool
 )
 from app.core.state import SellState
 from langchain_core.messages import AIMessage, HumanMessage
@@ -24,8 +25,8 @@ class OrderNodes:
     def __init__(self):
         self.create_order_agent = create_react_agent(
             model=llm_agent,
-            tools=([create_order_tool, get_all_editable_orders_tool, update_item_quantity_tool, 
-                    remove_item_from_order_tool, update_receiver_info_in_order_tool]),
+            tools=([create_order_tool, get_all_editable_orders_tool, update_item_quantity_tool,
+                    remove_item_from_order_tool, update_receiver_info_in_order_tool, add_item_into_order_tool]),
             prompt = order_agent_system_prompt(),
             state_schema=SellState
         )

@@ -49,3 +49,6 @@ LOGGING_CONFIG = {
 def setup_logging():
     """Cấu hình logging theo dictConfig với filter chỉ giữ log từ app.*"""
     logging.config.dictConfig(LOGGING_CONFIG)
+    
+setup_logging()
+logger = logging.getLogger(__name__)

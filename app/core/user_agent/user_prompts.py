@@ -188,9 +188,9 @@ def split_and_rewrite_prompt() -> str:
         ### B. Người dùng nói `"mua <sản phẩm>"`
         - Nếu `<sản phẩm>` **chưa có** trong `seen_products` → tạo **2 sub_query** (tuần tự):
           1. Tìm sản phẩm `<tên sản phẩm>` → `product_agent` (lưu vào `seen_products`)  
-          2. Thêm sản phẩm `<tên sản phẩm>` vào giỏ hàng → `cart_agent`
+          2. Thêm sản phẩm `<tên sản phẩm>` với <product_id> và <sku> vào giỏ hàng → `cart_agent`
         - Nếu `<sản phẩm>` **đã có** trong `seen_products` → tạo **1 sub_query**:
-          - Thêm sản phẩm `<tên sản phẩm>` vào giỏ hàng → `cart_agent`
+          - Thêm sản phẩm `<tên sản phẩm>` với <product_id> và <sku> vào giỏ hàng → `cart_agent`
 
         ### C. Người dùng nói `"lên đơn"`
         - Tạo **1 sub_query**: *lên đơn hàng* → `order_agent` (giả sử các bước kiểm tra/thiếu thông tin được xử lý ở mức cao hơn)
@@ -198,6 +198,14 @@ def split_and_rewrite_prompt() -> str:
         ## Sửa giỏ hàng (thay số lượng / xóa / cập nhật thông tin liên quan)
         - Nếu **cart** đã có dữ liệu → tạo **1 sub_query**: cập nhật yêu cầu của khách trong **giỏ hàng** → `cart_agent`.  
         - Nếu thao tác liên quan sản phẩm mà `seen_products` chưa có → trước khi cập nhật phải tạo sub_query gọi `product_agent` để lấy product (theo quy tắc chung).
+        - Nếu khách nói thay thế <sản phẩm A> bằng <sản phẩm B>, hãy dựa vào tên của <sản phẩm B> và thực hiện 1 trong 2 trường hợp dưới đây:
+            1. <sản phẩm B> có trong seen_products → tạo **2 sub_query** (tuần tự):
+                1.1. Thêm <sản phẩm B> vào giỏ hàng -> `cart_agent`
+                1.2. Xoá <sản phẩm A> ra khỏi giỏ hàng -> `cart_agent`
+            2. <sản phẩm B> không có trong seen_products → tạo **3 sub_query** (tuần tự):
+                2.1. Tìm <sản phẩm B> -> `product_agent`
+                2.2. Thêm <sản phẩm B> với số lượng bằng <sản phẩm A> vào giỏ hàng -> `cart_agent`
+                2.3. Xoá <sản phẩm A> ra khỏi giỏ hàng -> `cart_agent`
 
         ## Sửa đơn đã đặt (thay số lượng / xóa / cập nhật thông tin người nhận)
         ### 1) Khi **orders đã có dữ liệu**
@@ -215,6 +223,17 @@ def split_and_rewrite_prompt() -> str:
 
         ### 3) Trường hợp khách yêu cầu sửa thông tin người nhận của đơn nhưng **không cung cấp thông tin cần sửa**
         - Chỉ tạo **1 sub_query**: lấy các đơn hàng cho khách → `order_agent`
+        
+        ### 4) Trường hợp thay thế sản phẩm:
+        - Nếu khách nói thay thế <sản phẩm A> bằng <sản phẩm B>, hãy dựa vào tên của <sản phẩm B> và thực hiện 1 trong 2 trường hợp dưới đây:
+            1. <sản phẩm B> có trong seen_products → tạo **2 sub_query** (tuần tự):
+                1.1. Thêm <sản phẩm B> có <product_id> và <sku> vào trong đơn hàng có mã là <order_id> -> `order_agent`
+                1.2. Xoá <sản phẩm A> có <product_id> và <sku> ra khỏi đơn hàng có mã là <order_id> -> `order_agent`
+            2. <sản phẩm B> không có trong seen_products → tạo **3 sub_query** (tuần tự):
+                2.1. Tìm <sản phẩm B> -> `product_agent`
+                2.2. Thêm <sản phẩm B> vào trong đơn hàng có mã là <order_id> và có số lượng giống <sản phẩm A> -> `order_agent`
+                2.3. Xoá <sản phẩm A> ra khỏi đơn hàng có mã là <order_id> -> `order_agent`
+
 
         ## Quy tắc xử lý khi người dùng cung cấp `name` / `phone_number` / `address`
         - Dựa vào **ngữ cảnh cuộc hội thoại** trước đó:
@@ -225,7 +244,6 @@ def split_and_rewrite_prompt() -> str:
 
         ### Trường hợp đặc biệt về dữ liệu không đầy đủ
         - Nếu khách cung cấp địa chỉ không đầy đủ (ví dụ `"92 Yên Thế"`) → vẫn chấp nhận là địa chỉ hợp lệ và tạo **1 sub_query**: *Thêm địa chỉ của khách* → (agent tương ứng là `customer_agent` theo ngữ cảnh).
-
 
         ## Trường hợp kết hợp: khi trước đó chatbot đã hỏi số điện thoại để hỗ trợ đặt hàng
         - Nếu user sau đó nhắn số điện thoại **và** đã chọn sản phẩm, thì **tạo 2 sub_query** (tuần tự):
