@@ -8,10 +8,8 @@ from langchain_core.messages import AIMessage, HumanMessage
 from typing import Any
 import json
 from app.log.logger_config import setup_logging
-import logging
 
-setup_logging()
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 router = APIRouter()
 graph = build_graph()
