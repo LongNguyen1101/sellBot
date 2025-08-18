@@ -2,10 +2,8 @@ from app.core.state import SellState
 from langgraph.types import Command
 from app.core.model import llm
 from app.log.logger_config import setup_logging
-import logging
 
-setup_logging()
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 MEMBERS = (["product_agent", "cart_agent", "order_agent", "customer_agent",
             "customer_service_agent", "irrelevant_agent", "store_info_agent"])

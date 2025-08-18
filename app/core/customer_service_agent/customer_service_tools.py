@@ -10,10 +10,8 @@ from langchain_core.messages import ToolMessage
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 from app.log.logger_config import setup_logging
-import logging
 
-setup_logging()
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 @tool
 def get_qna_tool(

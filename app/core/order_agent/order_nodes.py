@@ -16,10 +16,8 @@ from langgraph.prebuilt import create_react_agent
 from app.core.model import llm_agent
 from app.core.utils.helper_function import get_chat_his
 from app.log.logger_config import setup_logging
-import logging
 
-setup_logging()
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 class OrderNodes:
     def __init__(self):
@@ -39,7 +37,10 @@ class OrderNodes:
             start_offset=-10
         )
         state["messages"].append(
-            HumanMessage(content=state["current_task"])
+            HumanMessage(content=(
+                f"Đây là thông tin các đơn hàng orders (nếu có): {state["orders"]}\n"
+                f"Đây là yêu cầu hiện tại: {state["current_task"]}"
+            ))
         )
         tasks = state["tasks"]
         next_node = "__end__"

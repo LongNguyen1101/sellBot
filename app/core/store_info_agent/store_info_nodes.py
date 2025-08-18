@@ -6,10 +6,8 @@ from app.core.model import llm_agent
 from app.core.store_info_agent.store_info_prompts import store_info_agent_prompt
 from app.core.utils.helper_function import get_chat_his
 from app.log.logger_config import setup_logging
-import logging
 
-setup_logging()
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 class StoreInfoNodes:
     def __init__(self):

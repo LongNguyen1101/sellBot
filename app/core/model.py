@@ -11,7 +11,9 @@ MODEL_NAME_TOOLS = os.getenv("MODEL_NAME_TOOLS")
 
 def init_model(
     model_name: Optional[str] = MODEL_NAME,
-    reasoning_effort: str = "medium"
+    reasoning_effort: Optional[str] = None,
+    use_responses_api: bool = False,
+    use_previous_response_id: bool = False
 ):
     if model_name.startswith("gemini"):
         return ChatGoogleGenerativeAI(model=model_name)
@@ -19,21 +21,27 @@ def init_model(
         return ChatOpenAI(
             model=model_name,
             reasoning_effort=reasoning_effort,
-            use_responses_api=True,
-            use_previous_response_id=True
+            use_responses_api=use_responses_api,
+            use_previous_response_id=use_previous_response_id
         )
 
 llm = init_model(
     model_name=MODEL_NAME,
-    reasoning_effort="low"
+    reasoning_effort="low",
+    use_responses_api=True,
+    use_previous_response_id=False
 )
 
 llm_agent = init_model(
     model_name=MODEL_NAME_AGENT,
-    reasoning_effort="minimal"
+    reasoning_effort="minimal",
+    use_responses_api=True,
+    use_previous_response_id=False
 )
 
 llm_tools = init_model(
     model_name=MODEL_NAME_TOOLS,
-    reasoning_effort="minimal"
+    reasoning_effort="minimal",
+    use_responses_api=True,
+    use_previous_response_id=False
 )

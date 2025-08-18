@@ -2,8 +2,8 @@ from typing import Any, Optional, Literal
 from app.core.utils.class_parser import ProductChosen
 from app.core.utils.graph_function import GraphFunction
 from app.core.state import SellState
-from app.models.normal_models import Order
-from pydantic import BaseModel
+from langchain_core.messages import ToolMessage
+
 
 graph_function = GraphFunction()
     
@@ -140,3 +140,20 @@ def add_cart(product: ProductChosen):
     
     return key, value
 
+def build_update(
+    content: str,
+    status: str,
+    tool_call_id: Any,
+    **kwargs
+) -> dict:
+    return {
+        "messages": [
+            ToolMessage
+            (
+                content=content,
+                tool_call_id=tool_call_id
+            )
+        ],
+        "status": status,
+        **kwargs
+    }

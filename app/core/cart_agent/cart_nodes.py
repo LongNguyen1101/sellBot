@@ -9,22 +9,21 @@ from app.core.cart_agent.cart_tools import (
     add_cart_tool,
     get_cart_tool,
     change_quantity_cart_tool,
-    update_receiver_info_in_cart_tool
+    update_receiver_info_in_cart_tool,
+    remove_item_tool
 )
 from app.core.cart_agent.cart_prompts import cart_agent_system_prompt
 from app.core.model import llm_agent
 from typing import Literal
 from app.log.logger_config import setup_logging
-import logging
 
-setup_logging()
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 class CartNodes:
     def __init__(self):
         self.create_cart_agent = create_react_agent(
             model=llm_agent,
-            tools=[add_cart_tool, get_cart_tool, change_quantity_cart_tool, update_receiver_info_in_cart_tool],
+            tools=[add_cart_tool, get_cart_tool, change_quantity_cart_tool, update_receiver_info_in_cart_tool, remove_item_tool],
             prompt = cart_agent_system_prompt(),
             state_schema=SellState
         )
@@ -37,7 +36,10 @@ class CartNodes:
             start_offset=-10
         )
         state["messages"].append(
-            HumanMessage(content=state["current_task"])
+            HumanMessage(content=(
+                f"Đây là giỏ hàng của khách: {state["cart"]}\n"
+                f"Đây là yêu cầu hiện tại: {state["current_task"]}\n"
+            ))
         )
         tasks = state["tasks"]
         next_node = "__end__"

@@ -16,7 +16,10 @@ from app.core.utils.class_parser import AgentToolResponse, OrderChosen, ProductC
 from app.models.normal_models import Order
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
-from app.log.logger_config import logger
+from app.log.logger_config import setup_logging
+from app.core.utils.helper_function import build_update
+
+logger = setup_logging(__name__)
 
 def _extract_order(order_info: dict, 
                    order_items: List[dict]
@@ -29,24 +32,6 @@ def _extract_order(order_info: dict,
     order_info["order_items"] = order_items
     
     return order_info
-    
-def build_update(
-    content: str,
-    status: str,
-    tool_call_id: Any,
-    **kwargs
-) -> dict:
-    return {
-        "messages": [
-            ToolMessage
-            (
-                content=content,
-                tool_call_id=tool_call_id
-            )
-        ],
-        "status": status,
-        **kwargs
-    }
     
 def _find_order(
     all_orders: List[dict],
@@ -784,7 +769,6 @@ def update_receiver_info_in_order_tool(
                 phone_number=phone_number if phone_number else state["phone_number"],
                 address=address if address else state["address"],
                 get_order=get_order,
-                found_order=found_order,
                 public_crud=public_crud,
                 tool_call_id=tool_call_id
             )

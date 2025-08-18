@@ -11,10 +11,8 @@ from app.services.crud_public import PublicCRUD
 from app.core.utils.class_parser import AgentToolResponse
 from app.core.utils.graph_function import graph_function
 from app.log.logger_config import setup_logging
-import logging
 
-setup_logging()
-logger = logging.getLogger(__name__)
+logger = setup_logging(__name__)
 
 def _get_or_create_customer(chat_id: int) ->dict:
     with session_scope() as sess:

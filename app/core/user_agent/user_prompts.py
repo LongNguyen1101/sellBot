@@ -191,6 +191,7 @@ def split_and_rewrite_prompt() -> str:
           2. Thêm sản phẩm `<tên sản phẩm>` với <product_id> và <sku> vào giỏ hàng → `cart_agent`
         - Nếu `<sản phẩm>` **đã có** trong `seen_products` → tạo **1 sub_query**:
           - Thêm sản phẩm `<tên sản phẩm>` với <product_id> và <sku> vào giỏ hàng → `cart_agent`
+        - Tuyệt đối KHÔNG ĐƯỢC TÁCH SUB_QUERY THÊM VÀO GIỎ HÀNG VÀ LÊN (TẠO) ĐƠN LIÊN TIẾP NHAU (tức là gọi order_agent), đã có sub_query thêm vào giỏ hàng thì không có sub_query lên (tạo) đơn
 
         ### C. Người dùng nói `"lên đơn"`
         - Tạo **1 sub_query**: *lên đơn hàng* → `order_agent` (giả sử các bước kiểm tra/thiếu thông tin được xử lý ở mức cao hơn)
@@ -200,12 +201,12 @@ def split_and_rewrite_prompt() -> str:
         - Nếu thao tác liên quan sản phẩm mà `seen_products` chưa có → trước khi cập nhật phải tạo sub_query gọi `product_agent` để lấy product (theo quy tắc chung).
         - Nếu khách nói thay thế <sản phẩm A> bằng <sản phẩm B>, hãy dựa vào tên của <sản phẩm B> và thực hiện 1 trong 2 trường hợp dưới đây:
             1. <sản phẩm B> có trong seen_products → tạo **2 sub_query** (tuần tự):
-                1.1. Thêm <sản phẩm B> vào giỏ hàng -> `cart_agent`
-                1.2. Xoá <sản phẩm A> ra khỏi giỏ hàng -> `cart_agent`
+                1.1. Cho mua (bắt buộc có từ mua) <sản phẩm B> với <số lượng> có <product_id> và <sku> và <variance_description> (thêm đoạn chữ sau 'phải sử dụng tool `add_cart_tool`')-> `cart_agent`
+                1.2. Xoá <sản phẩm A> có <product_id> và <sku> và <variance_description> ra khỏi giỏ hàng, sau đó tạo thông báo cho khách đã thay thế <sản phẩm A> với <số lượng> bằng <sản phẩm B> với <số lượng>-> `cart_agent`
             2. <sản phẩm B> không có trong seen_products → tạo **3 sub_query** (tuần tự):
                 2.1. Tìm <sản phẩm B> -> `product_agent`
-                2.2. Thêm <sản phẩm B> với số lượng bằng <sản phẩm A> vào giỏ hàng -> `cart_agent`
-                2.3. Xoá <sản phẩm A> ra khỏi giỏ hàng -> `cart_agent`
+                2.2. Cho mua (bắt buộc có từ mua)  <sản phẩm B> với <số lượng> (thêm đoạn chữ sau 'phải sử dụng tool `add_cart_tool`') -> `cart_agent`
+                2.3. Xoá <sản phẩm A> ra khỏi giỏ hàng, sau đó tạo thông báo cho khách đã thay thế <sản phẩm A> với <số lượng> bằng <sản phẩm B> với <số lượng> -> `cart_agent`
 
         ## Sửa đơn đã đặt (thay số lượng / xóa / cập nhật thông tin người nhận)
         ### 1) Khi **orders đã có dữ liệu**
@@ -227,12 +228,12 @@ def split_and_rewrite_prompt() -> str:
         ### 4) Trường hợp thay thế sản phẩm:
         - Nếu khách nói thay thế <sản phẩm A> bằng <sản phẩm B>, hãy dựa vào tên của <sản phẩm B> và thực hiện 1 trong 2 trường hợp dưới đây:
             1. <sản phẩm B> có trong seen_products → tạo **2 sub_query** (tuần tự):
-                1.1. Thêm <sản phẩm B> có <product_id> và <sku> vào trong đơn hàng có mã là <order_id> -> `order_agent`
-                1.2. Xoá <sản phẩm A> có <product_id> và <sku> ra khỏi đơn hàng có mã là <order_id> -> `order_agent`
+                1.1. Cho mua (bắt buộc có từ mua) <sản phẩm B> với <số lượng> có <product_id> và <sku> và <variance_description> vào trong đơn hàng có mã là <order_id> (thêm đoạn chữ sau 'phải sử dụng tool `add_item_into_order_tool`') -> `order_agent`
+                1.2. Xoá <sản phẩm A> có <product_id> và <sku> và <variance_description> ra khỏi đơn hàng có mã là <order_id>, sau đó tạo thông báo (không gọi tool lúc tạo thông báo) cho khách đã thay thế <sản phẩm A> với <số lượng> bằng <sản phẩm B> với <số lượng> -> `order_agent`
             2. <sản phẩm B> không có trong seen_products → tạo **3 sub_query** (tuần tự):
                 2.1. Tìm <sản phẩm B> -> `product_agent`
-                2.2. Thêm <sản phẩm B> vào trong đơn hàng có mã là <order_id> và có số lượng giống <sản phẩm A> -> `order_agent`
-                2.3. Xoá <sản phẩm A> ra khỏi đơn hàng có mã là <order_id> -> `order_agent`
+                2.2. Cho mua (bắt buộc có từ mua) <sản phẩm B> với <số lượng> có <product_id> và <sku> và <variance_description> vào trong đơn hàng có mã là <order_id> và có số lượng giống <sản phẩm A> (thêm đoạn chữ sau 'phải sử dụng tool `add_item_into_order_tool`') -> `order_agent`
+                2.3. Xoá <sản phẩm A> ra khỏi đơn hàng có mã là <order_id>, sau đó tạo thông báo (không gọi tool lúc tạo thông báo) cho khách đã thay thế <sản phẩm A> với <số lượng> bằng <sản phẩm B> với <số lượng> -> `order_agent`
 
 
         ## Quy tắc xử lý khi người dùng cung cấp `name` / `phone_number` / `address`
