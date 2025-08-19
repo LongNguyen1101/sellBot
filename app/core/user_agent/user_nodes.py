@@ -33,7 +33,8 @@ def _get_or_create_customer(chat_id: int) ->dict:
                 f"Tên: {customer["name"]} | "
                 f"Số điện thoại: {customer["phone_number"]} | "
                 f"Địa chỉ: {customer["address"]} | "
-                f"ID khách: {customer["customer_id"]}."
+                f"ID khách: {customer["customer_id"]}.", 
+                color="green"
             )
         else:
             logger.info("Không có thông tin khách hàng, tạo mới khách")
@@ -105,7 +106,7 @@ class UserNodes:
             cart=state.get("cart", {}),
             seen_products=state.get("seen_products", [])
         )
-        logger.info(f"Danh sách tasks: {tasks}")
+        logger.info(f"Danh sách tasks: {tasks}", color="green")
         
         if len(tasks) > 1:
             waiting_messages = [

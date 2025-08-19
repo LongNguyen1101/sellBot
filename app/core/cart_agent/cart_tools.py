@@ -215,7 +215,7 @@ def add_cart_tool(
             state["address"]
         )
         
-        logger.info("Thêm sản phẩm thành công")
+        logger.info("Thêm sản phẩm thành công", color="green")
         return Command(
             update=build_update(
                 content=(
@@ -256,7 +256,7 @@ def get_cart_tool(
                 state["address"]
             )
             
-            logger.info("Trả về giỏ hàng thành công")
+            logger.info("Trả về giỏ hàng thành công", color="green")
             return Command(
                 update=build_update(
                     content=(
@@ -360,7 +360,7 @@ def change_quantity_cart_tool(
                 )
             )
 
-        logger.info("Đã Thay đổi số lượng sản phẩm trong giỏ hàng thành công")
+        logger.info("Đã Thay đổi số lượng sản phẩm trong giỏ hàng thành công", color="green")
         cart_info = get_cart(
             cart=new_cart, 
             name=state["name"], 
@@ -368,7 +368,7 @@ def change_quantity_cart_tool(
             address=state["address"]
         )
 
-        logger.info("Cập nhật thông tin số lượng sản phẩm thành công")
+        logger.info("Cập nhật thông tin số lượng sản phẩm thành công", color="green")
         return Command(
             update=build_update(
                 content=(
@@ -430,7 +430,7 @@ def remove_item_tool(
             tool_call_id=tool_call_id
         )
         
-        logger.info("Xoá sản phẩm thành công")
+        logger.info("Xoá sản phẩm thành công", color="green")
         return Command(update=update)
     
     except Exception as e:
@@ -492,7 +492,7 @@ def update_receiver_info_in_cart_tool(
                 address if address else state["address"],
             )
             
-            logger.info("Cập nhật thông tin người nhận thành công")
+            logger.info("Cập nhật thông tin người nhận thành công", color="green")
             return Command(
                 update=build_update(
                     content=(

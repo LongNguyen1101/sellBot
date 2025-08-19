@@ -177,7 +177,7 @@ def add_phone_name_address_tool(
                 "phone_number": customer["phone_number"],
                 "address": customer["address"]
             }
-            logger.info("Thêm tên | số điện thoại | địa chỉ khách thành công")
+            logger.info("Thêm tên | số điện thoại | địa chỉ khách thành công", color="green")
             
             if cart and "place_holder" not in cart:
                 logger.info("Khách có hàng trong giỏ")

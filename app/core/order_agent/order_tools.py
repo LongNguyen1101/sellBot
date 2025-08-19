@@ -206,7 +206,7 @@ def _handle_remove_item(
             tool_call_id=tool_call_id,
         )
     
-    logger.info("Xoá sản phẩm thành công")
+    logger.info("Xoá sản phẩm thành công", color="green")
     
     order_info, order_detail = _get_order(
         order_id=found_order["order_id"],
@@ -257,7 +257,7 @@ def _handle_update_item_quantity(
             status="error"
         )
         
-    logger.info(f"Cập nhật sản phẩm thành công")
+    logger.info(f"Cập nhật sản phẩm thành công", color="green")
     
     order_info, order_detail = _get_order(
         order_id=found_order["order_id"],
@@ -314,7 +314,7 @@ def _handle_update_receiver(
             status="error"
         )
     
-    logger.info("Cập nhật thông tin người nhận thành công")
+    logger.info("Cập nhật thông tin người nhận thành công", color="green")
     order_detail = return_order(
         order_info=get_order,
         order_items=get_order["order_items"],
@@ -423,7 +423,7 @@ def _add_item_into_order(
             tool_call_id=tool_call_id,
         )
         
-    logger.info(f"Thêm sản phẩm có mã là {response["product_id"]} vào đơn hàng thành công")
+    logger.info(f"Thêm sản phẩm có mã là {response["product_id"]} vào đơn hàng thành công", color="green")
     
     order_info, order_detail = _get_order(
         order_id=get_order["order_id"],
@@ -505,7 +505,7 @@ def _handle_get_editable_orders(
     if not all_orders:
         return None, None
 
-    logger.info(f"Lấy các orders của khách thành công: {all_orders}")
+    logger.info(f"Lấy các orders của khách thành công: {all_orders}", color="green")
     messages = [
         {'role': 'system', 'content': choose_order_prompt()},
         {'role': 'human', 'content': (
@@ -590,7 +590,7 @@ def create_order_tool(
                     )
                 )
                 
-            logger.info("Thêm các sản phẩm vào đơn hàng thành công")
+            logger.info("Thêm các sản phẩm vào đơn hàng thành công", color="green")
             order_detail = return_order(
                 order_info=updated_order, 
                 order_items=created_order_items, 
@@ -702,7 +702,7 @@ def get_all_editable_orders_tool(
                     break
             
             logger.info(f"Xác định được order mà khách muốn: {get_order}")
-            logger.info("Lấy danh sách các orders thành công")
+            logger.info("Lấy danh sách các orders thành công", color="green")
             
             return Command(
                 update=build_update(
@@ -867,7 +867,7 @@ def remove_order(
             )
             
             if delete_order:
-                logger.info("Xoá order thành công")
+                logger.info("Xoá order thành công", color="green")
                 return Command(
                     update=build_update(
                         content=f"Xoá đơn hàng {get_order["order_id"]} thành công",

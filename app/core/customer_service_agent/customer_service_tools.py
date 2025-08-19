@@ -38,7 +38,7 @@ def get_qna_tool(
                 } for data in documents
             ]
             
-            logger.info("Lấy qna thành công")
+            logger.info("Lấy qna thành công", color="green")
             logger.info(f"Nội dung qna trả về: {contents}")
             
             return Command(
@@ -85,7 +85,7 @@ def get_common_situation_tool(
                 } for data in documents
             ]
             
-            logger.info("Lấy common_situations thành công")
+            logger.info("Lấy common_situations thành công", color="green")
             logger.info(f"Nội dung common_situations trả về: {contents}")
             
             return Command(

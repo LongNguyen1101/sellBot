@@ -1,7 +1,54 @@
 # logging_config.py
 import logging
 import logging.config
-import sys
+from rich.logging import RichHandler
+from rich.console import Console
+
+console = Console(force_terminal=True, width=120)
+
+# Tạo RichHandler
+rich_handler = RichHandler(
+    console=console,
+    show_time=True,
+    show_path=False,
+    markup=True,
+    rich_tracebacks=True
+)
+
+class ColoredLogger:
+    """Wrapper class cung cấp các method với màu cố định"""
+    
+    def __init__(self, logger):
+        self.logger = logger
+    
+    # Các màu tùy chỉnh cho từng level
+    def debug(self, message, color="cyan"):
+        self.logger.debug(f"🔍 [{color}]{message}[/{color}]")
+    
+    def info(self, message, color="bright_magenta"):
+        self.logger.info(f"ℹ️  [{color}]{message}[/{color}]")
+    
+    def warning(self, message, color="orange3"):
+        self.logger.warning(f"⚠️  [{color}]{message}[/{color}]")
+    
+    def error(self, message, color="bright_red"):
+        self.logger.error(f"❌ [{color}]{message}[/{color}]")
+    
+    def critical(self, message, color="bold purple"):
+        self.logger.critical(f"🚨 [{color}]{message}[/{color}]")
+    
+    # Các method với màu đặc biệt
+    def success(self, message):
+        self.logger.info(f"✅ [bold green]{message}[/bold green]")
+    
+    def fail(self, message):
+        self.logger.error(f"💥 [bold red on yellow]{message}[/bold red on yellow]")
+    
+    def highlight(self, message):
+        self.logger.info(f"⭐ [bold yellow on blue]{message}[/bold yellow on blue]")
+    
+    def subtle(self, message):
+        self.logger.info(f"[dim]{message}[/dim]")
 
 LOGGING_CONFIG = {
     "version": 1,
@@ -49,4 +96,8 @@ LOGGING_CONFIG = {
 def setup_logging(name):
     """Cấu hình logging theo dictConfig với filter chỉ giữ log từ app.*"""
     logging.config.dictConfig(LOGGING_CONFIG)
-    return logging.getLogger(name)
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(rich_handler)
+    
+    return ColoredLogger(logger)
