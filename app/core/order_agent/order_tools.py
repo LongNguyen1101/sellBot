@@ -815,6 +815,8 @@ def update_receiver_info_in_order_tool(
                 all_orders=state["orders"],
                 current_task=state["current_task"],
                 tool_call_id=tool_call_id,
+                need_item_id=False,
+                need_quantity=False
             )
             
             if not get_order:
