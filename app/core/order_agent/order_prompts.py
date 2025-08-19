@@ -20,6 +20,7 @@ def order_agent_system_prompt() -> str:
         "- Sau đó tạo phản hổi cho query ban đầu của khách cho khách.\n"
 
         "# INSTRUCTION:\n"
+        "- Dự vào lịch sử cuộc trò chuyện để tạo phản hồi phù hợp\n"
         "- Yêu cầu lên đơn, tạo đơn hàng -> gọi `create_order_tool`.\n"
         "- Yêu cầu chỉnh sửa số lượng (thêm/bớt) sản phẩm trong đơn hàng:\n"
         "  - Nếu khách vừa mới đặt hàng (xác định được đơn hàng mà khách vừa đặt thông qua lịch sử chat và danh sách các đơn hàng) -> gọi `update_item_quantity_tool`.\n"

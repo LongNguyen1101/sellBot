@@ -11,6 +11,8 @@ from app.services.crud_public import PublicCRUD
 from app.core.utils.class_parser import AgentToolResponse
 from app.core.utils.graph_function import graph_function
 from app.log.logger_config import setup_logging
+import random
+
 
 logger = setup_logging(__name__)
 
@@ -106,7 +108,17 @@ class UserNodes:
         logger.info(f"Danh sách tasks: {tasks}")
         
         if len(tasks) > 1:
-            content = "Dạ khách ăn miếng bánh uống miếng trà đợi em một chút nhe."
+            waiting_messages = [
+                "Dạ khách cứ thong thả, khách pha thêm ly trà thơm thơm rồi chờ em trả kết quả nè.",
+                "Dạ khách ăn miếng bánh uống miếng trà đợi em một chút nhe.",
+                "Khách chờ máy một chút, em pha ly cafe cho tỉnh táo rồi quay lại ngay.",
+                "Dạ khách đợi xíu, em vắt óc suy nghĩ cho vừa vị.",
+                "Em đang đói nên khách chờ em xíu nhenn, tks khách nhìu."
+            ]
+
+            idx = random.randint(0, 4)
+            content = waiting_messages[idx]
+
             update["messages"] = [AIMessage(content=content, name="split_request_node")]
         
         update["tasks"] = tasks
