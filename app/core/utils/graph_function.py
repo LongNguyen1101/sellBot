@@ -218,10 +218,11 @@ class GraphFunction:
             customer_id=customer_id,
         )
             
-    def retrieve_product_descriptions(self,
-                                      public_crud: PublicCRUD,
-                                      user_input: str, 
-                                      match_count: int = 5,
+    def retrieve_product_descriptions(
+        self,
+        public_crud: PublicCRUD,
+        user_input: str, 
+        match_count: int = 5,
     ):
         
         embedding_model = OpenAIEmbeddings(
@@ -232,11 +233,12 @@ class GraphFunction:
         
         return public_crud.call_match_product_descriptions(embedding_vector, match_count)
             
-    def get_product_embedding_info(self, 
-                                    public_crud: PublicCRUD,
-                                    user_input: str,
-                                    match_count: int = 5,
-                                    number_of_products: int = 10,
+    def get_product_embedding_info(
+        self, 
+        public_crud: PublicCRUD,
+        user_input: str,
+        match_count: int = 5,
+        number_of_products: int = 10,
     ):
         product_id_list = []
         product_raw = self.retrieve_product_descriptions(
