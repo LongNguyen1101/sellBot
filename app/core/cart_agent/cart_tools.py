@@ -148,6 +148,7 @@ def add_cart_tool(
 ) -> Command:
     """Use this tool to add product into cart"""
     try:
+        logger.info("Đang gọi add_cart_tool")
         seen_products = state["seen_products"]
         phone_number = state["phone_number"]
         cart = state["cart"]
@@ -214,6 +215,7 @@ def add_cart_tool(
             state["address"]
         )
         
+        logger.info("Thêm sản phẩm thành công")
         return Command(
             update=build_update(
                 content=(
@@ -231,6 +233,7 @@ def add_cart_tool(
         )
         
     except Exception as e:
+        logger.error(f"Lỗi: {e}")
         raise
     
 @tool
@@ -240,6 +243,7 @@ def get_cart_tool(
 ) -> Command:
     """Use this tool to return items in cart to customer"""
     try:
+        logger.info("Đang gọi get_cart_tool")
         cart = state["cart"]
         
         if cart and "place_holder" not in cart:
@@ -252,6 +256,7 @@ def get_cart_tool(
                 state["address"]
             )
             
+            logger.info("Trả về giỏ hàng thành công")
             return Command(
                 update=build_update(
                     content=(
@@ -274,7 +279,6 @@ def get_cart_tool(
             
             
         logger.info("Giỏ hàng không có sản phẩm")
-        
         seen_products = state["seen_products"]
         return Command(
             update=build_update(
@@ -289,6 +293,7 @@ def get_cart_tool(
             )
         )
     except Exception as e:
+        logger.error(f"Lỗi: {e}")
         raise
 
 @tool
@@ -297,34 +302,125 @@ def change_quantity_cart_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to change quantity of a specify product in cart"""
-    cart = state["cart"]
-    
-    key, update_quantity = _find_product_to_update(
-        cart=cart,
-        current_task=state["current_task"],
-        chat_histories=get_chat_his(
-            messages=state["messages"],
-            start_offset=-10
+    try:
+        logger.info("Đang gọi change_quantity_cart_tool")
+        cart = state["cart"]
+
+        key, update_quantity = _find_product_to_update(
+            cart=cart,
+            current_task=state["current_task"],
+            chat_histories=get_chat_his(
+                messages=state["messages"],
+                start_offset=-10
+            )
         )
-    )
+
+        # Handel exception
+        update_unvalid = _handle_exception(
+            key=key,
+            update_quantity=update_quantity,
+            tool_call_id=tool_call_id
+        )
+
+        if update_unvalid:
+            return Command(update=update_unvalid)
+
+        # Key and update_quantity are determined
+        logger.info("Đã có đầy đủ thông tin sản phẩm và số lượng muốn cập nhật")
+        logger.info(f"Cập nhật số lượng thành: {update_quantity}")
+
+        if update_quantity == 0:
+            logger.info("Sau khi cập nhật thì số lượng sản phẩm = 0")
+
+            update = _handle_remove_item(
+                cart=cart,
+                key=key,
+                name=state["name"], 
+                phone_number=state["phone_number"], 
+                address=state["address"],
+                tool_call_id=tool_call_id
+            )
+
+            return Command(update=update)
+
+        logger.info("Sau khi cập nhật thì số lượng sản phẩm > 0")
+        new_cart = _update_quantity(
+            cart=cart.copy(),
+            key=key,
+            update_quantity=update_quantity
+        )
+
+        if not new_cart:
+            logger.error(f"Lỗi: {key} không có trong giỏ hàng")
+            return Command(
+                update=build_update(
+                    content="Đã có lỗi trong lúc xác định sản phẩm mà khách muốn cập nhật.",
+                    status="error",
+                    tool_call_id=tool_call_id
+                )
+            )
+
+        logger.info("Đã Thay đổi số lượng sản phẩm trong giỏ hàng thành công")
+        cart_info = get_cart(
+            cart=new_cart, 
+            name=state["name"], 
+            phone_number=state["phone_number"], 
+            address=state["address"]
+        )
+
+        logger.info("Cập nhật thông tin số lượng sản phẩm thành công")
+        return Command(
+            update=build_update(
+                content=(
+                    "Đã sửa lại thông tin cho khách, xác nhận lại với khách thông tin vừa sửa.\n"
+                    "Trả lại đầy đủ thông tin các sản phẩm cho khách, không được rút gọn:\n"
+                    f"{cart_info}\n"
+                    "Nếu danh sách trên rỗng thì nói khách hiện tại không có sản phẩm nào khách "
+                    "muốn mua.\n"
+                ),
+                status="finish",
+                tool_call_id=tool_call_id,
+                cart=new_cart
+            )
+        )
+    except Exception as e:
+        logger.error(f"Lỗi: {e}")
+        raise
     
-    # Handel exception
-    update_unvalid = _handle_exception(
-        key=key,
-        update_quantity=update_quantity,
-        tool_call_id=tool_call_id
-    )
-    
-    if update_unvalid:
-        return Command(update=update_unvalid)
-    
-    # Key and update_quantity are determined
-    logger.info("Đã có đầy đủ thông tin sản phẩm và số lượng muốn cập nhật")
-    logger.info(f"Cập nhật số lượng thành: {update_quantity}")
-    
-    if update_quantity == 0:
-        logger.info("Sau khi cập nhật thì số lượng sản phẩm = 0")
-        
+
+@tool
+def remove_item_tool(
+    state: Annotated[SellState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
+    """Use this tool to remove product in cart"""
+    try:
+        logger.info("Đang gọi remove_item_tool")
+        cart = state["cart"]
+
+        key, update_quantity = _find_product_to_update(
+            cart=cart,
+            current_task=state["current_task"],
+            chat_histories=get_chat_his(
+                messages=state["messages"],
+                start_offset=-10
+            )
+        )
+
+        # Handel exception
+        update_unvalid = _handle_exception(
+            key=key,
+            update_quantity=update_quantity,
+            need_quantity=False,
+            tool_call_id=tool_call_id
+        )
+
+        if update_unvalid:
+            return Command(update=update_unvalid)
+
+        # Key are determined
+        logger.info(f"Xác định được key trong giỏ hàng: {key}")
+
         update = _handle_remove_item(
             cart=cart,
             key=key,
@@ -334,90 +430,12 @@ def change_quantity_cart_tool(
             tool_call_id=tool_call_id
         )
         
+        logger.info("Xoá sản phẩm thành công")
         return Command(update=update)
     
-    logger.info("Sau khi cập nhật thì số lượng sản phẩm > 0")
-    new_cart = _update_quantity(
-        cart=cart.copy(),
-        key=key,
-        update_quantity=update_quantity
-    )
-    
-    if not new_cart:
-        logger.error(f"Lỗi: {key} không có trong giỏ hàng")
-        return Command(
-            update=build_update(
-                content="Đã có lỗi trong lúc xác định sản phẩm mà khách muốn cập nhật.",
-                status="error",
-                tool_call_id=tool_call_id
-            )
-        )
-    
-    logger.info("Đã Thay đổi số lượng sản phẩm trong giỏ hàng thành công")
-    cart_info = get_cart(
-        cart=new_cart, 
-        name=state["name"], 
-        phone_number=state["phone_number"], 
-        address=state["address"]
-    )
-    
-    return Command(
-        update=build_update(
-            content=(
-                "Đã sửa lại thông tin cho khách, xác nhận lại với khách thông tin vừa sửa.\n"
-                "Trả lại đầy đủ thông tin các sản phẩm cho khách, không được rút gọn:\n"
-                f"{cart_info}\n"
-                "Nếu danh sách trên rỗng thì nói khách hiện tại không có sản phẩm nào khách "
-                "muốn mua.\n"
-            ),
-            status="finish",
-            tool_call_id=tool_call_id,
-            cart=new_cart
-        )
-    )
-    
-
-@tool
-def remove_item_tool(
-    state: Annotated[SellState, InjectedState],
-    tool_call_id: Annotated[str, InjectedToolCallId]
-) -> Command:
-    """Use this tool to remove product in cart"""
-    cart = state["cart"]
-    
-    key, update_quantity = _find_product_to_update(
-        cart=cart,
-        current_task=state["current_task"],
-        chat_histories=get_chat_his(
-            messages=state["messages"],
-            start_offset=-10
-        )
-    )
-    
-    # Handel exception
-    update_unvalid = _handle_exception(
-        key=key,
-        update_quantity=update_quantity,
-        need_quantity=False,
-        tool_call_id=tool_call_id
-    )
-    
-    if update_unvalid:
-        return Command(update=update_unvalid)
-    
-    # Key are determined
-    logger.info(f"Xác định được key trong giỏ hàng: {key}")
-    
-    update = _handle_remove_item(
-        cart=cart,
-        key=key,
-        name=state["name"], 
-        phone_number=state["phone_number"], 
-        address=state["address"],
-        tool_call_id=tool_call_id
-    )
-    
-    return Command(update=update)
+    except Exception as e:
+        logger.error(f"Lỗi: {e}")
+        raise
 
 @tool
 def update_receiver_info_in_cart_tool(
@@ -429,6 +447,7 @@ def update_receiver_info_in_cart_tool(
 ) -> Command:
     """Use this tool to update name or phone number or address of receiver in cart"""
     try:
+        logger.info("Đang gọi update_receiver_info_in_cart_tool")
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
             
@@ -473,13 +492,15 @@ def update_receiver_info_in_cart_tool(
                 address if address else state["address"],
             )
             
+            logger.info("Cập nhật thông tin người nhận thành công")
             return Command(
                 update=build_update(
                     content=(
                         "Các thông tin đã cập nhật của khách, hãy thông báo cho khách:\n"
                         f"{log}\n\n"
                         "Trả lại các sản phẩm cho khách, không được rút gọn, bỏ bớt hay tự bịa đặt thông tin:\n"
-                        f"{cart_info}"
+                        f"{cart_info}\n"
+                        "Hỏi khách có muốn lên đơn luôn không.\n"
                     ),
                     status="finish",
                     tool_call_id=tool_call_id,
@@ -490,4 +511,5 @@ def update_receiver_info_in_cart_tool(
             )
             
     except Exception as e:
+        logger.error(f"Lỗi: {e}")
         raise

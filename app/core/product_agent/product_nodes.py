@@ -68,8 +68,6 @@ class ProductNodes:
            if response.get(key, None) is not None:
                update[key] = response[key]
         
-        logger.info(f"Thông tin cập nhật: {update}")
-        
         return Command(
             update=update,
             goto=next_node

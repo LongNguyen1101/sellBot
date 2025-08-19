@@ -7,6 +7,7 @@ from langgraph.types import Command
 from app.core.state import SellState
 from langchain_core.tools import tool, InjectedToolCallId
 from langchain_core.messages import ToolMessage
+from app.core.utils.helper_function import build_update
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
 from app.log.logger_config import setup_logging
@@ -19,13 +20,15 @@ def get_qna_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool if user has a question about product such as how to use."""
+    logger.info("Đang gọi get_qna_tool")
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
-            user_input = state["user_input"]
-            current_task = state["current_task"]
-            documents = graph_function.retrieve_qna(public_crud=public_crud, user_input=current_task)
-            tool_response: AgentToolResponse = {}
+
+            documents = graph_function.retrieve_qna(
+                public_crud=public_crud, 
+                user_input=state["current_task"]
+            )
             
             contents = [
                 {
@@ -35,38 +38,28 @@ def get_qna_tool(
                 } for data in documents
             ]
             
+            logger.info("Lấy qna thành công")
             logger.info(f"Nội dung qna trả về: {contents}")
             
-            tool_response = {
-                "status": "finish",
-                "content": (
-                    f"Đây là các tài liệu liên quan: {contents}\n"
-                    f"Đây là yêu cầu của người dùng: {user_input}\n"
-                    f"Yêu cầu hiện tại của hệ thống: {current_task}.\n"
-                    "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
-                    "sử dụng các tài liệu liên quan.\n"
-                    "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
-                    "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
-                )
-            }
-            
-            update = {
-                "messages": [
-                    ToolMessage
-                    (
-                        content=tool_response["content"],
-                        tool_call_id=tool_call_id
-                    )
-                ],
-                "status": tool_response["status"]
-            }
-            
             return Command(
-                update=update
+                update=build_update(
+                    content=(
+                        f"Đây là các tài liệu liên quan: {contents}\n"
+                        f"Đây là yêu cầu của người dùng: {state["user_input"]}\n"
+                        f"Yêu cầu hiện tại của hệ thống: {state["current_task"]}.\n"
+                        "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
+                        "sử dụng các tài liệu liên quan.\n"
+                        "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
+                        "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
+                    ),
+                    status="finish",
+                    tool_call_id=tool_call_id
+                )
             )
         
     except Exception as e:
-        raise Exception(e)
+        logger.error(f"Lỗi: {e}")
+        raise
     
 @tool
 def get_common_situation_tool(
@@ -74,16 +67,15 @@ def get_common_situation_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool if user has problems with products or product is malfuctioning."""
+    logger.info("Đang gọi get_common_situation_tool")
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
-            user_input = state["user_input"]
-            current_task = state["current_task"]
+
             documents = graph_function.retrieve_common_situation(
                 public_crud=public_crud, 
-                user_input=user_input
+                user_input=state["user_input"]
             )
-            tool_response: AgentToolResponse = {}
             
             contents = [
                 {
@@ -93,35 +85,25 @@ def get_common_situation_tool(
                 } for data in documents
             ]
             
+            logger.info("Lấy common_situations thành công")
             logger.info(f"Nội dung common_situations trả về: {contents}")
             
-            tool_response = {
-                "status": "finish",
-                "content": (
-                    f"Đây là các tài liệu liên quan: {contents}\n"
-                    f"Đây là yêu cầu của người dùng: {user_input}.\n"
-                    f"Yêu cầu hiện tại của hệ thống: {current_task}.\n"
-                    "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
-                    "sử dụng các tài liệu liên quan.\n"
-                    "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
-                    "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
-                )
-            }
-            
-            update = {
-                "messages": [
-                    ToolMessage
-                    (
-                        content=tool_response["content"],
-                        tool_call_id=tool_call_id
-                    )
-                ],
-                "status": tool_response["status"]
-            }
-            
             return Command(
-                update=update
+                update=build_update(
+                    content=(
+                        f"Đây là các tài liệu liên quan: {contents}\n"
+                        f"Đây là yêu cầu của người dùng: {state["user_input"]}.\n"
+                        f"Yêu cầu hiện tại của hệ thống: {state["current_task"]}.\n"
+                        "Hãy tạo một phản hồi để giải đáp yêu cầu của người dùng "
+                        "sử dụng các tài liệu liên quan.\n"
+                        "Ưu tiên tạo phản hồi dựa trên tài liệu liên quan có similarity cao."
+                        "Lưu ý chỉ trả về 1 câu phản hồi và không giải thích gì thêm.\n"
+                    ),
+                    status="finish",
+                    tool_call_id=tool_call_id
+                )
             )
         
     except Exception as e:
-        raise Exception(e)
+        logger.error(f"Lỗi: {e}")
+        raise

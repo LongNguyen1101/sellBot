@@ -67,8 +67,6 @@ class CustomerNodes:
         for key in ["customer_id", "name", "phone_number", "address"]:
            if response.get(key, None) is not None:
                update[key] = response[key]
-               
-        logger.info(f"Thông tin cập nhật: {update}")
         
         return Command(
             update=update,

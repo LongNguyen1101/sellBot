@@ -86,6 +86,9 @@ def split_and_rewrite_prompt() -> str:
         - `cart`: giỏ hàng  
         - `name`, `phone_number`, `address`: thông tin nhận hàng  
         - `orders`: danh sách đơn đã đặt
+        - `name`: tên của khách
+        - `phone_number`: số điện thoại của khách
+        - `address`: địa chỉ của khách
 
         ## Trường hợp & logic
 
@@ -181,20 +184,28 @@ def split_and_rewrite_prompt() -> str:
         
         
         "# LUẬT TÁCH QUERY\n"
+        "Lưu ý dòng nào có chữ in hoa là bắt buộc phải thực hiện theo.\n"
         """
         ### A. Người dùng chọn sản phẩm từ `seen_products`
         - Tạo **1 sub_query**: *thêm sản phẩm `<abc>` vào giỏ hàng* → `cart_agent`.
 
         ### B. Người dùng nói `"mua <sản phẩm>"`
         - Nếu `<sản phẩm>` **chưa có** trong `seen_products` → tạo **2 sub_query** (tuần tự):
-          1. Tìm sản phẩm `<tên sản phẩm>` → `product_agent` (lưu vào `seen_products`)  
-          2. Thêm sản phẩm `<tên sản phẩm>` với <product_id> và <sku> vào giỏ hàng → `cart_agent`
+            1. Tìm sản phẩm `<tên sản phẩm>` → `product_agent` (lưu vào `seen_products`)  
+            2. Thêm sản phẩm `<tên sản phẩm>` với <product_id> và <sku> vào giỏ hàng → `cart_agent`
         - Nếu `<sản phẩm>` **đã có** trong `seen_products` → tạo **1 sub_query**:
-          - Thêm sản phẩm `<tên sản phẩm>` với <product_id> và <sku> vào giỏ hàng → `cart_agent`
+            1. Thêm sản phẩm `<tên sản phẩm>` VỚI <số lượng> CÓ <product_id> VÀ <sku> VÀ <variance_description> vào giỏ hàng → `cart_agent` (các thông tin product_id, sku, variance_description lấy ra từ seen_products)
         - Tuyệt đối KHÔNG ĐƯỢC TÁCH SUB_QUERY THÊM VÀO GIỎ HÀNG VÀ LÊN (TẠO) ĐƠN LIÊN TIẾP NHAU (tức là gọi order_agent), đã có sub_query thêm vào giỏ hàng thì không có sub_query lên (tạo) đơn
 
         ### C. Người dùng nói `"lên đơn"`
         - Tạo **1 sub_query**: *lên đơn hàng* → `order_agent` (giả sử các bước kiểm tra/thiếu thông tin được xử lý ở mức cao hơn)
+        
+        ### C. Người dùng cung cấp tên | địa chỉ | số điện thoại:
+        - Xem xét các thông tin tên | địa chỉ | số điện thoại được cung cấp, thực hiện 1 trong 2 trường hợp sau:
+            1. Nếu tên | địa chỉ | số điện thoại chưa có và khách cung cấp tên | địa chỉ | số điện thoại thì tức là khách muốn cung cấp thông tin của khách -> gọi `customer_agent`
+            2. Nếu tên | địa chỉ | số điện thoại đã có và khách cung cấp tên | địa chỉ | số điện thoại thì dựa vào lịch sử chat để quyết định khách đang muốn thay đổi thông tin người nhận ở:
+                2.1 giỏ hàng -> `cart_agent`
+                2.2 đơn hàng -> `order_agent`
 
         ## Sửa giỏ hàng (thay số lượng / xóa / cập nhật thông tin liên quan)
         - Nếu **cart** đã có dữ liệu → tạo **1 sub_query**: cập nhật yêu cầu của khách trong **giỏ hàng** → `cart_agent`.  

@@ -238,6 +238,7 @@ def _handle_update_item_quantity(
         )
         
     logger.info("Đơn hàng có nhiều hơn 1 sản phẩm -> thoải mái cập nhật")
+    logger.info(f"Số lượng cần cập nhật: {found_order["quantity"]}")
     
     new_item = graph_function.update_order_item_quantity(
         item_id=found_order["item_id"],
@@ -322,7 +323,7 @@ def _handle_update_receiver(
     
     return build_update(
         content= (
-            "Cập sản phẩm thành công.\n"
+            "Cập đơn hàng thành công.\n"
             "Trả về đơn hàng sau khi cập nhật y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
             f"{order_detail}"
         ),
@@ -439,7 +440,85 @@ def _add_item_into_order(
         tool_call_id=tool_call_id,
         orders=[order_info]
     )
-        
+
+def _handle_create_order(
+    cart_items: dict,
+    customer_id: int,
+    receiver_name: str,
+    receiver_phone_number: str,
+    receiver_address: str,
+    shipping_fee: int,
+    public_crud: PublicCRUD
+):
+    new_order_id = graph_function.create_order(
+        public_crud=public_crud,
+        customer_id=customer_id,
+        receiver_name=receiver_name,
+        receiver_phone_number=receiver_phone_number,
+        receiver_address=receiver_address,
+        shipping_fee=shipping_fee
+    )
+    
+    created_order_items, updated_order = graph_function.add_cart_item_to_order(
+        cart_items=cart_items, 
+        order_id=new_order_id,
+        public_crud=public_crud,
+        parse_object=False
+    )
+    
+    return new_order_id, created_order_items, updated_order
+
+def _handle_find_customer(
+    chat_id: int,
+    tool_call_id: str,
+    public_crud: PublicCRUD
+):
+    customer = graph_function.get_customer_by_chat_id(
+        chat_id=chat_id,
+        public_crud=public_crud,
+        parse_object=False
+       )
+    
+    if not customer:
+        return None, build_update(
+            content=(
+                "Khách hàng chưa đăng ký trên hệ thống nên sẽ không có thông tin "
+                "các đơn hàng, hỏi khách số điện thoại để đăng ký vào hệ thống, "
+                "ngoài ra nếu tiện khách có thể cho tên và địa chỉ.\b"
+            ),
+            status="asking",
+            tool_call_id=tool_call_id
+        )
+    
+    return customer, {}
+
+def _handle_get_editable_orders(
+    customer_id: int,
+    current_task: str,
+    public_crud: PublicCRUD
+):
+    all_orders = graph_function.get_editable_orders(
+        customer_id, 
+        public_crud=public_crud,
+    )
+    
+    if not all_orders:
+        return None, None
+
+    logger.info(f"Lấy các orders của khách thành công: {all_orders}")
+    messages = [
+        {'role': 'system', 'content': choose_order_prompt()},
+        {'role': 'human', 'content': (
+            f"Danh sách các đơn đặt hàng của khách: {all_orders}\n"
+            f"Yêu cầu của khách: {current_task}\n"
+            f"Ngày hôm nay: {date.today().strftime('%d-%m-%Y')}"
+        )}
+    ]
+    
+    found_order = llm_tools.with_structured_output(OrderChosen).invoke(messages)
+    
+    return all_orders, found_order
+    
     
 @tool
 def create_order_tool(
@@ -447,109 +526,100 @@ def create_order_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to create order"""
+    logger.info("Đang gọi create_order_tool")
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
             
-            update = {}
-            tool_response: AgentToolResponse = {}
-            
-            customer_id = state["customer_id"]
-            receiver_name = state["name"]
-            receiver_phone_number = state["phone_number"]
-            receiver_address = state["address"]
             shipping_fee = 50000
             
-            if not receiver_phone_number or not receiver_name or not receiver_address:
+            if not state["name"] or not state["address"] or not state["phone_number"]:
                 logger.info("Không đủ thông tin của người nhận")
-                tool_response = {
-                        "status": "incomplete_info",
-                        "content": (
-                            "Không có thông tin tên người nhận và địa chỉ "
-                            "người nhận, hỏi khách hàng cung cấp thông tin.\n"
-                        )
-                    }
-            else:
-                logger.info("Đủ thông tin của người nhận")
-                cart_items = state["cart"].copy()
-                cart_items.pop("place_holder", None)
+                return Command(
+                    update=build_update(
+                        content=(
+                            "Đây là các thông tin của khách:\n"
+                            f"- Tên: {state["name"]}\n"
+                            f"- Địa chỉ: {state["address"]}\n"
+                            f"- Số điện thoại: {state["phone_number"]}\n"
+                            "Hỏi khách các thông tin còn thiếu để lên đơn."
+                        ),
+                        status="incomplete_info",
+                        tool_call_id=tool_call_id
+                    )
+                )
                 
-                if cart_items:
-                    logger.info(f"Thông tin giỏ hàng: {cart_items}")
-
-                    new_order_id = graph_function.create_order(
-                        public_crud=public_crud,
-                        customer_id=customer_id,
-                        receiver_name=receiver_name,
-                        receiver_phone_number=receiver_phone_number,
-                        receiver_address=receiver_address,
-                        shipping_fee=shipping_fee
-                    )
-                    
-                    created_order_items, updated_order = graph_function.add_cart_item_to_order(
-                        cart_items=cart_items, 
-                        order_id=new_order_id,
-                        public_crud=public_crud,
-                        parse_object=False
-                    )
-
-                    if not created_order_items:
-                        logger.error("Lỗi không thể thêm các sản phẩm vào đơn hàng")
-                        tool_response = {
-                            "status": "error",
-                            "content": "Lỗi không thể thêm các sản phẩm vào đơn hàng, vui lòng thử lại"
-                        }
-                    else:
-                        logger.info("Thêm các sản phẩm vào đơn hàng thành công")
-                        order_detail = return_order(
-                            order_info=updated_order, 
-                            order_items=created_order_items, 
-                            order_id=new_order_id
-                        )
-
-                        tool_response = {
-                            "status": "finish",
-                            "content": (
-                                "Tạo đơn hàng thành công.\n"
-                                "Trả về đơn hàng y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
-                                f"{order_detail}\n"
-                                "Lưu ý không được bỏ bớt thông tin, liệt kê chi tiết cho khách.\n"
-                                "Nói khách đơn hàng sẽ được vận chuyển trong 3-5 ngày, khách để ý điện thoại "
-                                "để nhân viên giao hàng gọi.\n"
-                            )
-                        }
-
-                        # Save to state
-                        update["orders"] = [_extract_order(
-                            order_info=updated_order,
-                            order_items=created_order_items
-                        )]
-                        
-                        # Delete cart
-                        update["cart"] = {"place_holder": "None"}
-                else:
-                    tool_response = {
-                        "status": "incomplete_info",
-                        "content": (
+            logger.info("Đủ thông tin của người nhận")
+            cart_items = state["cart"].copy()
+            cart_items.pop("place_holder", None)
+            
+            if not cart_items:
+                logger.info("Giỏ hàng không có sản phẩm")
+                return Command(
+                    update=build_update(
+                        content=(
                             "Khách chưa chọn sản phẩm nào.\n"
                             "Dựa vào lịch sử để hỏi khách có muốn chọn sản phẩm đã xem không, "
                             "nếu không có thông tin thì hỏi khách muốn mua gì.\n"
-                        )
-                    }
-            
-            update["messages"] = [
-                ToolMessage
-                (
-                    content=tool_response["content"],
-                    tool_call_id=tool_call_id
+                        ),
+                        status="incomplete_info",
+                        tool_call_id=tool_call_id
+                    )
                 )
-            ]
-            update["status"] = tool_response["status"]
             
-            return Command(update=update)
+            logger.info(f"Giỏ hàng có sản phẩm, thông tin giỏ hàng: {cart_items}")
+
+            new_order_id, created_order_items, updated_order = _handle_create_order(
+                cart_items=cart_items,
+                customer_id=state["customer_id"],
+                receiver_name=state["name"],
+                receiver_phone_number=state["phone_number"],
+                receiver_address=state["phone_number"],
+                shipping_fee=shipping_fee,
+                public_crud=public_crud
+            )
+
+            if not created_order_items:
+                logger.error("Lỗi không thể thêm các sản phẩm vào đơn hàng")
+                
+                return Command(
+                    update=build_update(
+                        content="Lỗi không thể thêm các sản phẩm vào đơn hàng, vui lòng thử lại",
+                        status="error",
+                        tool_call_id=tool_call_id
+                    )
+                )
+                
+            logger.info("Thêm các sản phẩm vào đơn hàng thành công")
+            order_detail = return_order(
+                order_info=updated_order, 
+                order_items=created_order_items, 
+                order_id=new_order_id
+            )
+
+            return Command(
+                update=build_update(
+                    content=(
+                        "Tạo đơn hàng thành công.\n"
+                        "Trả về đơn hàng y nguyên cho khách (không được bớt thông tin sản phẩm):\n"
+                        f"{order_detail}\n"
+                        "Lưu ý không được bỏ bớt thông tin, liệt kê chi tiết cho khách.\n"
+                        "Nói khách đơn hàng sẽ được vận chuyển trong 3-5 ngày, khách để ý điện thoại "
+                        "để nhân viên giao hàng gọi.\n"
+                    ),
+                    tool_call_id=tool_call_id,
+                    status="finish",
+                    orders=[_extract_order(
+                        order_info=updated_order,
+                        order_items=created_order_items
+                    )],
+                    cart={"place_holder": "None"} # delete cart
+                )
+            )
             
     except Exception as e:
-        raise 
+        logger.info(f"Lỗi: {e}")
+        raise
     
     
 @tool
@@ -558,122 +628,104 @@ def get_all_editable_orders_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to get order based on request of customer"""
+    logger.info("Đang gọi get_all_editable_orders_tool")
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
             
-            update = {}
-            tool_response: AgentToolResponse = {}
-            
-            customer_id = state["customer_id"]
-            
-            if not customer_id:
+            if not state["customer_id"]:
                 logger.info("Không thấy customer_id -> tìm customer")
-                customer = graph_function.get_customer_by_chat_id(
-                    state["chat_id"], 
-                    public_crud=public_crud,
-                    parse_object=False
+                customer, update_not_found_customer = _handle_find_customer(
+                    chat_id=state["chat_id"],
+                    tool_call_id=tool_call_id,
+                    public_crud=public_crud
                 )
                 
-                if customer:
-                    logger.info(f"Tìm thấy customer có id: {customer["customer_id"]}")
-                    customer_id = customer["customer_id"]
-                    
-                    update["name"] = customer["name"]
-                    update["address"] = customer["address"]
-                    update["phone_number"] = customer["phone_number"]
-                    update["customer_id"] = customer["customer_id"]
-                else:
-                    logger.info("Khách chưa đăng ký trên hệ thống")
-                    tool_response = {
-                        "status": "asking",
-                        "content": (
-                            "Khách hàng chưa đăng ký trên hệ thống nên sẽ không có thông tin "
-                            "các đơn hàng, hỏi khách số điện thoại để đăng ký vào hệ thống, "
-                            "ngoài ra nếu tiện khách có thể cho tên và địa chỉ.\b"
-                        )
-                    }
+                if not customer:
+                    logger.info("Khách hàng chưa đăng ký trong hệ thống")
+                    return Command(update=update_not_found_customer)
+                
+            logger.info(f"Tìm thấy customer có id: {customer["customer_id"]}")
+            logger.info("Khách có id -> thực hiện lấy các orders")
             
-            if customer_id:
-                logger.info("Khách có id -> thực hiện lấy các orders")
-                all_orders = graph_function.get_editable_orders(
-                    customer_id, 
-                    public_crud=public_crud,
-                )
-
-                if all_orders:
-                    logger.info(f"Lấy các orders của khách thành công: {all_orders}")
-                    update["orders"] = all_orders
-                    
-                    messages = [
-                        {'role': 'system', 'content': choose_order_prompt()},
-                        {'role': 'human', 'content': (
-                            f"Danh sách các đơn đặt hàng của khách: {all_orders}\n"
-                            f"Yêu cầu của khách: {state['current_task']}\n"
-                            f"Ngày hôm nay: {date.today().strftime('%d-%m-%Y')}"
-                        )}
-                    ]
-                    
-                    found_order = llm_tools.with_structured_output(OrderChosen).invoke(messages)
-                    
-                    if not found_order["order_id"]:
-                        logger.info(f"Không thể xác định được order mà khách muốn")
-                        tool_response = {
-                            "status": "incomplete_info",
-                            "content": (
-                                "Không xác định được đơn hàng khách muốn.\n"
-                                "Trả về tất cả các đơn hàng đã đặt của khách, "
-                                "phải tóm gọn nhưng vẫn giữ lại thông tin quan trọng "
-                                "là order_id, tên các sản phẩm trong giỏ hàng, thông tin "
-                                "người nhận, thời gian đặt, tiền ship và tổng tiền (có tính ship).\n"
-                                "Đây là thông tin các đơn hàng:\n"
-                                f"{all_orders}\n"
-                            )
-                        }
-                    else:
-                        get_order = {}
-                        for order in all_orders:
-                            if order["order_id"] == found_order["order_id"]:
-                                get_order = order
-                                break
-                                
-                        logger.info(f"Xác định được order mà khách muốn: {get_order}")
-                                
-                        tool_response = {
-                            "status": "asking",
-                            "content": (
-                                "Đây là thông tin đơn hàng theo yêu cầu của khách.\n"
-                                f"{get_order}\n"
-                                "Hiện các đơn hàng dưới dạng liệt kê, tóm tắt các đơn hàng nhưng phải có thông "
-                                "tin của các sản phẩm trong đơn đó để khách nắm được.\n"
-                                "Và hãy dịch các thông tin từ tiếng anh sang tiếng Việt để khách dễ hiểu.\n"
-                                "Hãy hỏi khách có đúng đơn này không và có muốn thực hiện yêu cầu của khách không.\n"
-                                "Lưu ý product_id là mã sản phẩm, sku là mã phân loại sản phẩm.\n"
-                            )
-                        }
-                            
-                else:
-                    logger.info("Khách không có đơn hàng nào")
-                    tool_response = {
-                        "status": "asking",
-                        "content": (
+            all_orders, found_order = _handle_get_editable_orders(
+                customer_id=customer["customer_id"],
+                current_task=state["current_task"],
+                public_crud=public_crud
+            )
+            
+            if not all_orders:
+                logger.info("Khách không có đơn hàng nào")
+                return Command(
+                    update=build_update(
+                        content=(
                             "Hiện tại khách hàng chưa có đơn hàng nào đã được "
                             "giao cho khách hoặc khách chưa đặt đơn hàng nào.\n"
-                        )
-                    }
-
-            update["messages"] = [
-                ToolMessage
-                (
-                    content=tool_response["content"],
-                    tool_call_id=tool_call_id
+                        ),
+                        status="asking",
+                        tool_call_id=tool_call_id,
+                        customer_id=customer["customer_id"],
+                        name=customer["name"],
+                        phone_number=customer["phone_number"],
+                        address=customer["address"]
+                    )
                 )
-            ]
-            update["status"] = tool_response["status"]
             
-            return Command(update=update)
-        
+            if not found_order["order_id"]:
+                logger.info(f"Không thể xác định được order mà khách muốn")
+                return Command(
+                    update=build_update(
+                        content=(
+                            "Không xác định được đơn hàng khách muốn.\n"
+                            "Trả về tất cả các đơn hàng đã đặt của khách, "
+                            "phải tóm gọn nhưng vẫn giữ lại thông tin quan trọng "
+                            "là order_id, tên các sản phẩm trong giỏ hàng, thông tin "
+                            "người nhận, thời gian đặt, tiền ship và tổng tiền (có tính ship).\n"
+                            "Đây là thông tin các đơn hàng:\n"
+                            f"{all_orders}\n"
+                        ),
+                        status="incomplete_info",
+                        tool_call_id=tool_call_id,
+                        customer_id=customer["customer_id"],
+                        name=customer["name"],
+                        phone_number=customer["phone_number"],
+                        address=customer["address"]
+                    )
+                )
+            
+            logger.info(f"Đã biết được khách muốn order nào: {found_order["order_id"]}")
+            
+            get_order = {}
+            for order in all_orders:
+                if order["order_id"] == found_order["order_id"]:
+                    get_order = order
+                    break
+            
+            logger.info(f"Xác định được order mà khách muốn: {get_order}")
+            logger.info("Lấy danh sách các orders thành công")
+            
+            return Command(
+                update=build_update(
+                    content=(
+                        "Đây là thông tin đơn hàng theo yêu cầu của khách.\n"
+                        f"{get_order}\n"
+                        "Hiện các đơn hàng dưới dạng liệt kê, tóm tắt các đơn hàng nhưng phải có thông "
+                        "tin của các sản phẩm trong đơn đó để khách nắm được.\n"
+                        "Và hãy dịch các thông tin từ tiếng anh sang tiếng Việt để khách dễ hiểu.\n"
+                        "Hãy hỏi khách có đúng đơn này không và có muốn thực hiện yêu cầu của khách không.\n"
+                        "Lưu ý product_id là mã sản phẩm, sku là mã phân loại sản phẩm.\n"
+                    ),
+                    status="asking",
+                    tool_call_id=tool_call_id,
+                    customer_id=customer["customer_id"],
+                    name=customer["name"],
+                    phone_number=customer["phone_number"],
+                    address=customer["address"]
+                )
+            ) 
+               
     except Exception as e:
+        logger.error(f"Lỗi: {e}")
         raise
     
 @tool
@@ -682,6 +734,7 @@ def remove_item_from_order_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to remove product out of specify order"""
+    logger.info("Đang gọi remove_item_from_order_tool")
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
@@ -707,6 +760,7 @@ def remove_item_from_order_tool(
             return Command(update=update)
         
     except Exception as e:
+        logger.error(f"Lỗi: {e}")
         raise
 
 @tool
@@ -715,6 +769,7 @@ def update_item_quantity_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to update quantity of specify product in order"""
+    logger.info("Đang gọi update_item_quantity_tool")
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
@@ -739,7 +794,8 @@ def update_item_quantity_tool(
             return Command(update=update)
         
     except Exception as e:
-        raise Exception(e)
+        logger.error(f"Lỗi: {e}")
+        raise
 
 @tool
 def update_receiver_info_in_order_tool(
@@ -750,6 +806,7 @@ def update_receiver_info_in_order_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to update name or phone number or address of receiver in order"""
+    logger.info("Đang gọi update_receiver_info_in_order_tool")
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
@@ -776,7 +833,8 @@ def update_receiver_info_in_order_tool(
             return Command(update=update)
             
     except Exception as e:
-        raise Exception(e)
+        logger.error(f"Lỗi: {e}")
+        raise
     
 @tool
 def remove_order(
@@ -784,6 +842,7 @@ def remove_order(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to remove | delete order"""
+    logger.info("Đang gọi remove_order")
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
@@ -825,7 +884,8 @@ def remove_order(
             )
             
     except Exception as e:
-        raise Exception(e)
+        logger.error(f"Lỗi: {e}")
+        raise
     
 
 def add_item_into_order_tool(
@@ -833,6 +893,7 @@ def add_item_into_order_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to add product into specify order"""
+    logger.info("Đang gọi add_item_into_order_tool")
     try:
         with session_scope() as db_session:
             public_crud = PublicCRUD(db_session)
@@ -865,4 +926,5 @@ def add_item_into_order_tool(
             return Command(update=update)
         
     except Exception as e:
+        logger.error(f"Lỗi: {e}")
         raise

@@ -48,8 +48,6 @@ class IrrelevantNodes:
             "next_node": next_node
         }
         
-        logger.info(f"Thông tin cập nhật: {update}")
-        
         return Command(
             update=update,
             goto=next_node

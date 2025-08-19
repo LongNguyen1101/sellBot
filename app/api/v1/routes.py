@@ -34,7 +34,6 @@ async def chat(request: ChatRequest):
     
     logger.info(f">>>> Process messages: {request.user_input}")
     logger.info(f">>>> Chat id: {request.chat_id} | uuid: {request.uuid}")
-    logger.info(f">>>> Current state: {state}")
     
     events = graph.stream(state, config=config)
     return StreamingResponse(

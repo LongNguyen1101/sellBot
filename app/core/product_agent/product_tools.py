@@ -119,6 +119,7 @@ def get_products_tool(
     tool_call_id: Annotated[str, InjectedToolCallId]
 ) -> Command:
     """Use this tool to get products from database follow by the keyword of customer"""
+    logger.info("Đang gọi get_products_tool")
     try:
         with session_scope() as sess:
             public_crud = PublicCRUD(sess)
@@ -154,6 +155,5 @@ def get_products_tool(
             return Command(update=update)
             
     except Exception as e:
-        # Log the exception for debugging
-        logger.error(f"Có lỗi sảy ra: {e}")
+        logger.error(f"Lỗi: {e}")
         raise
