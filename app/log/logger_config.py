@@ -4,7 +4,7 @@ import logging.config
 from rich.logging import RichHandler
 from rich.console import Console
 
-console = Console(force_terminal=True, width=120)
+console = Console(force_terminal=True, width=150)
 
 # Tạo RichHandler
 rich_handler = RichHandler(
@@ -94,10 +94,10 @@ LOGGING_CONFIG = {
 }
 
 def setup_logging(name):
-    """Cấu hình logging theo dictConfig với filter chỉ giữ log từ app.*"""
     logging.config.dictConfig(LOGGING_CONFIG)
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
+    logger.propagate = False 
     logger.addHandler(rich_handler)
     
     return ColoredLogger(logger)
