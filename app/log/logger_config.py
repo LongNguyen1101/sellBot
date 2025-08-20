@@ -4,7 +4,7 @@ import logging.config
 from rich.logging import RichHandler
 from rich.console import Console
 
-console = Console(force_terminal=True, width=150)
+console = Console(force_terminal=True, width=120)
 
 # Tạo RichHandler
 rich_handler = RichHandler(

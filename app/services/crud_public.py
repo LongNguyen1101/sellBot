@@ -216,6 +216,35 @@ class PublicCRUD:
         
         return Customer(**row) if parse_object else dict(row)
     
+    def get_or_create_customer(self,
+                               chat_id: str,
+                               parse_object: bool = True
+    ) -> Customer | dict[str, Any] | None:
+        sql = text("""
+            WITH ins AS (
+                INSERT INTO customer (chat_id)
+                VALUES (:chat_id)
+                ON CONFLICT (chat_id) DO NOTHING
+                RETURNING customer_id, name, phone_number, address
+            )
+            SELECT * FROM ins
+            UNION ALL
+            SELECT customer_id, name, phone_number, address
+            FROM customer
+            WHERE chat_id = :chat_id
+            LIMIT 1;
+        """)
+        
+        params = {"chat_id": chat_id}
+        
+        result = self.db.execute(sql, params)
+        row = result.mappings().first()
+        
+        if not row:
+            return None
+        
+        return Customer(**row) if parse_object else dict(row)
+    
     def update_customer_info(self,
                              customer_id: int,
                              name: Optional[str] = None,

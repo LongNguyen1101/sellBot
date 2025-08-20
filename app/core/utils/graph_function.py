@@ -34,14 +34,16 @@ class GraphFunction:
                     "sku": product["sku"],
                     "product_name": product["product_name"],
                     "variance_description": product["variance_description"],
-                    "price": product["price"]
+                    "price": product["price"],
+                    "inventory": product["inventory"]
                 })
                 
                 show_products.append({
                     "product_name": product["product_name"],
                     "variance_description": product["variance_description"],
                     "brief_description": product["brief_description"],
-                    "price": product["price"]
+                    "price": product["price"],
+                    "inventory": product["inventory"]
                 })
         
         return extract_products, show_products
@@ -83,16 +85,12 @@ class GraphFunction:
                                public_crud: PublicCRUD,
                                parse_object: bool = False
     ):
-        customer =  public_crud.get_customer_by_chat_id(
+        customer =  public_crud.get_or_create_customer(
             chat_id=chat_id, 
             parse_object=parse_object
         )
-        if customer:
-            return customer, "found"
-        return public_crud.create_customer(
-            chat_id=chat_id, 
-            parse_object=parse_object
-        ), "create"
+        
+        return customer
         
             
     def update_customer(self,
@@ -238,7 +236,7 @@ class GraphFunction:
         public_crud: PublicCRUD,
         user_input: str,
         match_count: int = 5,
-        number_of_products: int = 10,
+        number_of_products: int = 5,
     ):
         product_id_list = []
         product_raw = self.retrieve_product_descriptions(
@@ -256,7 +254,9 @@ class GraphFunction:
                 
         
         # query by ids
-        products = public_crud.search_products_by_product_ids(product_id_list)[:number_of_products]
+        products = public_crud.search_products_by_product_ids(
+            product_ids=product_id_list[:number_of_products]
+        )
         show_products = []
         extract_products = []
         

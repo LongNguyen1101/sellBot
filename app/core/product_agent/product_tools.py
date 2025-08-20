@@ -24,7 +24,7 @@ def _handle_sql_return(
             content=(
                 "Thông báo tìm thấy một sản phẩm phù hợp với khách:"
                 f"{show_products}.\n"
-                "Đây là số điện thoại của khách:\n"
+                "Bắt buộc ghi đủ thông tin của sản phẩm, không được bỏ bớt."
             ),
             status="finish",
             tool_call_id=tool_call_id
@@ -35,6 +35,7 @@ def _handle_sql_return(
             content=(
                 f"Thông báo tìm thấy nhiều sản phẩm phù hợp với khách, tổng cộng có {products_quantity} sản phẩm tìm được:"
                 f"{show_products}."
+                "Bắt buộc ghi đủ thông tin của sản phẩm, không được bỏ bớt.\n"
                 "Hỏi khách muốn mua sản phẩm nào."
             ),
             status="asking",

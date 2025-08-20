@@ -34,7 +34,7 @@ llm = init_model(
 
 llm_agent = init_model(
     model_name=MODEL_NAME_AGENT,
-    reasoning_effort="minimal",
+    # reasoning_effort="minimal",
     use_responses_api=True,
     use_previous_response_id=False
 )

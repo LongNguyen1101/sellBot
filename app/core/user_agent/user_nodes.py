@@ -8,7 +8,6 @@ from app.core.utils.class_parser import SplitRequestOutput
 from app.core.utils.helper_function import build_update, get_chat_his
 from app.db.database import session_scope
 from app.services.crud_public import PublicCRUD
-from app.core.utils.class_parser import AgentToolResponse
 from app.core.utils.graph_function import graph_function
 from app.log.logger_config import setup_logging
 import random
@@ -21,24 +20,21 @@ def _get_or_create_customer(chat_id: int) ->dict:
         public_crud = PublicCRUD(sess)
         
         # Find customer or create a new one
-        customer, note = graph_function.get_or_create_customer(
+        customer = graph_function.get_or_create_customer(
             chat_id=chat_id, 
             public_crud=public_crud,
             parse_object=False
         )
         
-        if note == "found":
-            logger.info(
-                "Tìm thấy thông tin của khách: "
-                f"Tên: {customer["name"]} | "
-                f"Số điện thoại: {customer["phone_number"]} | "
-                f"Địa chỉ: {customer["address"]} | "
-                f"ID khách: {customer["customer_id"]}.", 
-                color="green"
-            )
-        else:
-            logger.info("Không có thông tin khách hàng, tạo mới khách")
-            
+        logger.info(
+            "Tìm thấy thông tin của khách: "
+            f"Tên: {customer["name"]} | "
+            f"Số điện thoại: {customer["phone_number"]} | "
+            f"Địa chỉ: {customer["address"]} | "
+            f"ID khách: {customer["customer_id"]}.", 
+            color="green"
+        )
+        
         return customer
     
 def _split_task(
@@ -87,7 +83,7 @@ class UserNodes:
                 "phone_number": customer["phone_number"]
             })
 
-                
+        logger.info("Đã có thông tin khách hàng")     
         update["messages"] = [HumanMessage(content=user_input, name="user_input_node")]
         
         return Command(
@@ -110,14 +106,20 @@ class UserNodes:
         
         if len(tasks) > 1:
             waiting_messages = [
-                "Dạ khách cứ thong thả, khách pha thêm ly trà thơm thơm rồi chờ em trả kết quả nè.",
-                "Dạ khách ăn miếng bánh uống miếng trà đợi em một chút nhe.",
-                "Khách chờ máy một chút, em pha ly cafe cho tỉnh táo rồi quay lại ngay.",
-                "Dạ khách đợi xíu, em vắt óc suy nghĩ cho vừa vị.",
-                "Em đang đói nên khách chờ em xíu nhenn, tks khách nhìu."
+                "Dạ khách cứ thong thả, khách pha thêm ly trà thơm thơm rồi chờ em trả kết quả nè ☕🍃😊.",
+                "Dạ khách ăn miếng bánh, uống miếng trà đợi em một chút nhe 🍰☕😉.",
+                "Khách chờ máy một chút, em pha ly cafe cho tỉnh táo rồi quay lại ngay ☕😎💨.",
+                "Dạ khách đợi xíu, em vắt óc suy nghĩ cho vừa vị 🤔🧠✨.",
+                "Em đang đói nên khách chờ em ăn xíu nhenn, cám ơn khách nhìu 🍔😋🙏.",
+                "Khách thong thả tí nha, em đang tập yoga cho trí não tỉnh táo xíu 🧘‍♀️💭😊.",
+                "Em mới tới công ty nên khách chờ em pha cà phê xíu nhenn ☕🏢😄.",
+                "Em đang cãi nhau với sếp, khách đợi em xíu em xử lý sếp em xong rồi qua với khách ạ 😅👩‍💼🔥.",
+                "Hôm nay trời đẹp nhưng em không có hứng làm việc lắm, khách đợi mấy giây để em tìm cảm hứng nhe 🌞😌🎨.",
+                "Nay sếp la em quá trời nên khách chờ em xíu em lau nước mắt rồi nhắn khách nhenn 😢🧻😂🙏.",
+                "Nay sếp em vui nên mua trà sữa đãi nhân viên, khách đợi em húp xong ly trà sữa trân châu x3 phô mai này rồi nhắn lại khách nhenn 🥤😋🧀✨😊."
             ]
 
-            idx = random.randint(0, 4)
+            idx = random.randint(0, len(waiting_messages) - 1)
             content = waiting_messages[idx]
 
             update["messages"] = [AIMessage(content=content, name="split_request_node")]

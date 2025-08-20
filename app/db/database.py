@@ -17,7 +17,7 @@ engine = create_engine(
     max_overflow=10,
     pool_recycle=300,
     pool_pre_ping=True,
-    pool_use_lifo=True
+    pool_use_lifo=True,
 )
 
 # engine = create_engine(
@@ -31,19 +31,6 @@ Session = scoped_session(SessionFactory)
 
 # Base class cho các model
 Base = declarative_base()
-        
-# @contextmanager
-# def session_scope():
-#     """Provide a transactional scope around a series of operations."""
-#     session = SessionLocal()
-#     try:
-#         yield session
-#         session.commit()
-#     except Exception:
-#         session.rollback()
-#         raise
-#     finally:
-#         session.close()
 
 @contextmanager
 def session_scope():
